@@ -1,16 +1,14 @@
-from typing import List
+from typing import Optional
 from sqlmodel import SQLModel
 
 
-class LeaderboardEntryResponse(SQLModel):
+class LeaderboardEntry(SQLModel):
     rank: int
     username: str
-    avatar_url: str | None
-    level: int
-    total_wins: int
-    average_score: float
+    display_name: str
+    avatar_url: Optional[str]
+    score: float
 
 
 class LeaderboardResponse(SQLModel):
-    entries: List[LeaderboardEntryResponse]
-    total: int
+    entries: list[LeaderboardEntry]

@@ -11,6 +11,10 @@ build/
 # Virtual environment
 venv/
 
+# claude
+.claude/
+CLAUDE.md
+
 # Alembic
 alembic/versions/*.py
 !alembic/versions/.gitkeep

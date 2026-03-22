@@ -16,4 +16,4 @@ from app.schemas.session import (
     MessageResponse,
 )
 from app.schemas.result import SessionScoreResponse, SessionFeedbackResponse, SessionResultResponse
-from app.schemas.leaderboard import LeaderboardEntryResponse, LeaderboardResponse
+from app.schemas.leaderboard import LeaderboardEntry, LeaderboardResponse

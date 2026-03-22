@@ -25,6 +25,7 @@ class Session(SQLModel, table=True):
     started_at: datetime = Field(default_factory=datetime.utcnow)
     finished_at: Optional[datetime] = None
     duration_seconds: Optional[int] = None
+    last_activity_at: datetime = Field(default_factory=datetime.utcnow)
     is_public_replay: bool = Field(default=False)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

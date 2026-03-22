@@ -3,7 +3,7 @@ from sqlmodel import Session
 from app.core.deps import get_current_user
 from app.db.session import get_session
 from app.models.user import User
-from app.schemas.auth import UserRegister, UserLogin, TokenResponse, CurrentUserResponse
+from app.schemas.auth import UserRegister, UserLogin, GoogleAuthRequest, TokenResponse, CurrentUserResponse
 from app.services import auth_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -17,6 +17,11 @@ def register(data: UserRegister, session: Session = Depends(get_session)):
 @router.post("/login", response_model=TokenResponse)
 def login(data: UserLogin, session: Session = Depends(get_session)):
     return auth_service.login(data, session)
+
+
+@router.post("/google", response_model=TokenResponse)
+def google_login(data: GoogleAuthRequest, session: Session = Depends(get_session)):
+    return auth_service.google_login(data, session)
 
 
 @router.get("/me", response_model=CurrentUserResponse)

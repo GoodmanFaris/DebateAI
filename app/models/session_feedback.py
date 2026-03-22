@@ -14,8 +14,7 @@ class SessionFeedback(SQLModel, table=True):
     summary: str
     pros: str
     cons: str
-    coach_analysis: Optional[str] = None
-    tone_analysis: Optional[str] = None
+    coach_data: Optional[str] = None
     improvement_tips: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
