@@ -9,3 +9,5 @@ bcrypt
 openai
 python-multipart
 google-auth
+requests
+python-dotenv
