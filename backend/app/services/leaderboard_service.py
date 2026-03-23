@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlmodel import Session, select
 from app.models.user import User
@@ -7,7 +8,13 @@ from app.models.user_stats import UserStats
 from app.models.session import Session as GameSession
 from app.models.session_score import SessionScore
 from app.models.daily_challenge import DailyChallenge
-from app.schemas.leaderboard import LeaderboardEntry, LeaderboardResponse
+from app.models.scenario import Scenario
+from app.schemas.leaderboard import (
+    LeaderboardEntry,
+    LeaderboardResponse,
+    DailySlot,
+    UserDailyReplaysResponse,
+)
 
 LEADERBOARD_LIMIT = 50
 
@@ -99,6 +106,95 @@ def get_global(session: Session) -> LeaderboardResponse:
 
     rows = session.exec(query).all()
     return LeaderboardResponse(entries=_build_entries(rows))
+
+
+def _build_slot(
+    difficulty: str,
+    scenario: Scenario,
+    rows: list,
+) -> DailySlot:
+    best = None
+    for row in rows:
+        if row.scenario_id != scenario.id:
+            continue
+        if best is None or (row.total_score or 0) > (best.total_score or 0):
+            best = row
+
+    if best is None:
+        return DailySlot(
+            difficulty=difficulty,
+            scenario_title=scenario.title,
+        )
+
+    return DailySlot(
+        difficulty=difficulty,
+        scenario_title=scenario.title,
+        session_id=best.id,
+        total_score=best.total_score,
+        outcome=best.outcome,
+        is_public_replay=best.is_public_replay,
+        completed=True,
+    )
+
+
+def get_user_daily_replays(
+    username: str, session: Session
+) -> UserDailyReplaysResponse:
+    profile = session.exec(
+        select(Profile).where(Profile.username == username)
+    ).first()
+    if profile is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    today = datetime.utcnow().date()
+    challenge = session.exec(
+        select(DailyChallenge).where(DailyChallenge.challenge_date == today)
+    ).first()
+    if challenge is None:
+        return UserDailyReplaysResponse(
+            username=profile.username,
+            display_name=profile.display_name,
+            avatar_url=profile.avatar_url,
+            slots=[],
+        )
+
+    easy_scenario = session.get(Scenario, challenge.easy_scenario_id)
+    medium_scenario = session.get(Scenario, challenge.medium_scenario_id)
+    hard_scenario = session.get(Scenario, challenge.hard_scenario_id)
+
+    query = (
+        select(
+            GameSession.id,
+            GameSession.scenario_id,
+            GameSession.outcome,
+            GameSession.is_public_replay,
+            SessionScore.total_score,
+        )
+        .outerjoin(SessionScore, SessionScore.session_id == GameSession.id)
+        .where(
+            GameSession.user_id == profile.user_id,
+            GameSession.daily_challenge_id == challenge.id,
+            GameSession.status == "completed",
+        )
+    )
+
+    rows = session.exec(query).all()
+
+    slots = [
+        _build_slot("easy", easy_scenario, rows),
+        _build_slot("medium", medium_scenario, rows),
+        _build_slot("hard", hard_scenario, rows),
+    ]
+
+    return UserDailyReplaysResponse(
+        username=profile.username,
+        display_name=profile.display_name,
+        avatar_url=profile.avatar_url,
+        slots=slots,
+    )
 
 
 def get_local(user: User, session: Session) -> LeaderboardResponse:

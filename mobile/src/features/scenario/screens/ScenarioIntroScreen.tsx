@@ -6,8 +6,11 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Alert,
 } from "react-native";
+import { useRouter } from "expo-router";
 import { getScenario, ScenarioDetail } from "../../../api/scenarios";
+import { startSession } from "../../../api/sessions";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: "#34C759",
@@ -20,9 +23,11 @@ export default function ScenarioIntroScreen({
 }: {
   scenarioId: number;
 }) {
+  const router = useRouter();
   const [scenario, setScenario] = useState<ScenarioDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -111,10 +116,27 @@ export default function ScenarioIntroScreen({
       </View>
 
       <Pressable
-        style={styles.startButton}
-        onPress={() => console.log("Start session for scenario:", scenario.id)}
+        style={[styles.startButton, starting && styles.startButtonDisabled]}
+        disabled={starting}
+        onPress={async () => {
+          setStarting(true);
+          try {
+            const session = await startSession(scenario.id);
+            router.push(
+              `/session/${session.session_id}?title=${encodeURIComponent(scenario.title)}&openingContext=${encodeURIComponent(session.opening_context)}&maxTurns=${session.max_turns}`
+            );
+          } catch {
+            Alert.alert("Error", "Could not start session. Please try again.");
+          } finally {
+            setStarting(false);
+          }
+        }}
       >
-        <Text style={styles.startButtonText}>Start Session</Text>
+        {starting ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.startButtonText}>Start Session</Text>
+        )}
       </Pressable>
     </ScrollView>
   );
@@ -225,6 +247,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: "center",
+  },
+  startButtonDisabled: {
+    opacity: 0.6,
   },
   startButtonText: {
     color: "#fff",

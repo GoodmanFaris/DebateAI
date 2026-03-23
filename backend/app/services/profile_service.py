@@ -96,6 +96,7 @@ def get_history(user: User, session: Session) -> SessionHistoryResponse:
             GameSession.finished_at,
             GameSession.outcome,
             SessionScore.total_score,
+            GameSession.is_public_replay,
         )
         .join(Scenario, Scenario.id == GameSession.scenario_id)
         .outerjoin(SessionScore, SessionScore.session_id == GameSession.id)
@@ -116,6 +117,7 @@ def get_history(user: User, session: Session) -> SessionHistoryResponse:
             completed_at=row.finished_at,
             outcome=row.outcome,
             total_score=row.total_score,
+            is_public_replay=row.is_public_replay,
         )
         for row in rows
     ]

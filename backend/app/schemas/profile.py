@@ -34,6 +34,7 @@ class SessionHistoryEntry(SQLModel):
     completed_at: datetime
     outcome: Optional[str]
     total_score: Optional[float]
+    is_public_replay: bool
 
 
 class SessionHistoryResponse(SQLModel):

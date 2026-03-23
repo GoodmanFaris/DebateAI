@@ -307,7 +307,8 @@ def finish_session(
             cons=feedback.cons,
             improvement_tips=feedback.improvement_tips,
         )
-    except Exception:
+    except Exception as e:
+        logger.error("Session %s evaluation failed: %s", session_id, e)
         game_session.outcome = None
 
     update_stats(

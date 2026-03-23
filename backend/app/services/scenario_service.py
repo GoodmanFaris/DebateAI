@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import datetime
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 from app.models.scenario import Scenario
@@ -20,7 +20,7 @@ def get_scenario(scenario_id: int, session: Session) -> ScenarioDetailResponse:
 
 
 def get_daily_challenge(user: User, session: Session) -> DailyChallengeResponse:
-    today = date.today()
+    today = datetime.utcnow().date()
     challenge = session.exec(
         select(DailyChallenge).where(DailyChallenge.challenge_date == today)
     ).first()
