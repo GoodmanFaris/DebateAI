@@ -10,6 +10,7 @@ import {
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../../store/auth.store";
 import { login, getMe } from "../../../api/auth";
+import { useGoogleAuth } from "../../../hooks/useGoogleAuth";
 import { AxiosError } from "axios";
 
 export default function LoginScreen() {
@@ -19,6 +20,7 @@ export default function LoginScreen() {
   const [error, setError] = useState("");
   const setAuth = useAuthStore((s) => s.setAuth);
   const router = useRouter();
+  const google = useGoogleAuth();
 
   const handleLogin = async () => {
     setError("");
@@ -76,6 +78,28 @@ export default function LoginScreen() {
         )}
       </Pressable>
 
+      <View style={styles.divider}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      {google.error ? (
+        <Text style={styles.error}>{google.error}</Text>
+      ) : null}
+
+      <Pressable
+        style={[styles.googleButton, google.loading && styles.buttonDisabled]}
+        onPress={google.handleGoogleLogin}
+        disabled={loading || google.loading}
+      >
+        {google.loading ? (
+          <ActivityIndicator color="#333" />
+        ) : (
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
+        )}
+      </Pressable>
+
       <Pressable onPress={() => router.push("/register")} disabled={loading}>
         <Text style={styles.link}>Don't have an account? Register</Text>
       </Pressable>
@@ -128,6 +152,35 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: "#fff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ddd",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#999",
+    fontSize: 14,
+  },
+  googleButton: {
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 8,
+    padding: 16,
+    alignItems: "center",
+    marginBottom: 16,
+    backgroundColor: "#fff",
+  },
+  googleButtonText: {
+    color: "#333",
     fontSize: 16,
     fontWeight: "600",
   },

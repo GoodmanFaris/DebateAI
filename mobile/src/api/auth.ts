@@ -42,3 +42,10 @@ export async function getMe(token: string): Promise<MeResponse> {
   });
   return res.data;
 }
+
+export async function googleAuth(idToken: string): Promise<TokenResponse> {
+  const res = await apiClient.post<TokenResponse>("/auth/google", {
+    id_token: idToken,
+  });
+  return res.data;
+}
