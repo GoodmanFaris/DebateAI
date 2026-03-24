@@ -7,13 +7,27 @@ import {
   ActivityIndicator,
   FlatList,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { getPublicReplay, PublicReplay, ReplayMessage } from "../../../api/leaderboard";
+import {
+  getPublicReplay,
+  PublicReplay,
+  ReplayMessage,
+} from "../../../api/leaderboard";
+import colors from "../../../constants/colors";
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: "#34C759",
-  medium: "#FF9500",
-  hard: "#FF3B30",
+const DIFFICULTY_CONFIG: Record<string, { color: string; label: string }> = {
+  easy: { color: "#34C759", label: "Easy" },
+  medium: { color: "#FF9500", label: "Medium" },
+  hard: { color: colors.primaryRed, label: "Hard" },
+};
+
+const OUTCOME_CONFIG: Record<string, { color: string; label: string }> = {
+  success: { color: "#34C759", label: "Win" },
+  partial: { color: "#FF9500", label: "Partial" },
+  fail: { color: colors.primaryRed, label: "Loss" },
 };
 
 export default function ReplayDetailScreen({
@@ -22,6 +36,7 @@ export default function ReplayDetailScreen({
   sessionId: number;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [replay, setReplay] = useState<PublicReplay | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -56,7 +71,8 @@ export default function ReplayDetailScreen({
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primaryBlue} />
+        <Text style={styles.loadingText}>Loading replay...</Text>
       </View>
     );
   }
@@ -64,211 +80,384 @@ export default function ReplayDetailScreen({
   if (error || !replay) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.error}>{error || "Replay not found."}</Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+        <Text style={styles.errorText}>{error || "Replay not found."}</Text>
+        <Pressable style={styles.errorButton} onPress={() => router.back()}>
+          <Text style={styles.errorButtonText}>Go Back</Text>
         </Pressable>
       </View>
     );
   }
 
-  const difficultyColor = DIFFICULTY_COLORS[replay.difficulty] ?? "#999";
+  const diff = DIFFICULTY_CONFIG[replay.difficulty] ?? {
+    color: "#999",
+    label: replay.difficulty,
+  };
+
+  const outcome = replay.outcome
+    ? (OUTCOME_CONFIG[replay.outcome] ?? { color: "#999", label: replay.outcome })
+    : null;
 
   return (
     <View style={styles.container}>
-      <Pressable style={styles.backLink} onPress={() => router.back()}>
-        <Text style={styles.backLinkText}>Back</Text>
-      </Pressable>
+      <LinearGradient
+        colors={["rgba(74, 144, 217, 0.18)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topLeftGlow}
+      />
+      <LinearGradient
+        colors={["rgba(231, 76, 60, 0.18)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topRightGlow}
+      />
 
-      <View style={styles.header}>
-        <Text style={styles.scenarioTitle}>{replay.scenario_title}</Text>
-        <View style={styles.metaRow}>
-          <Text
+      <FlatList
+        data={replay.messages}
+        keyExtractor={(item, index) =>
+          `${item.turn_index}-${item.role}-${index}`
+        }
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + 96 },
+        ]}
+        ListHeaderComponent={
+          <Header replay={replay} diff={diff} outcome={outcome} insets={insets} />
+        }
+        renderItem={({ item }) => <MessageBubble item={item} />}
+        ListEmptyComponent={
+          <View style={styles.emptyWrap}>
+            <Text style={styles.emptyText}>No messages in this replay.</Text>
+          </View>
+        }
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Fixed back button */}
+      <View style={[styles.ctaContainer, { paddingBottom: insets.bottom + 12 }]}>
+        <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons
+            name="arrow-back"
+            size={16}
+            color={colors.textPrimary}
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.backButtonText}>Back</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function Header({
+  replay,
+  diff,
+  outcome,
+  insets,
+}: {
+  replay: PublicReplay;
+  diff: { color: string; label: string };
+  outcome: { color: string; label: string } | null;
+  insets: { top: number };
+}) {
+  return (
+    <View style={[styles.header, { paddingTop: insets.top + 20 }]}>
+      {/* Eyebrow */}
+      <Text style={styles.eyebrow}>Public Replay</Text>
+
+      {/* Scenario title */}
+      <Text style={styles.scenarioTitle}>{replay.scenario_title}</Text>
+
+      {/* By line — uses display_name from API */}
+      <Text style={styles.byLine}>
+        by{" "}
+        <Text style={styles.byLineName}>{replay.display_name}</Text>
+      </Text>
+
+      {/* Badge row */}
+      <View style={styles.badgeRow}>
+        <View
+          style={[
+            styles.diffBadge,
+            { backgroundColor: `${diff.color}22`, borderColor: diff.color },
+          ]}
+        >
+          <Text style={[styles.diffBadgeText, { color: diff.color }]}>
+            {diff.label}
+          </Text>
+        </View>
+
+        {outcome && (
+          <View
             style={[
-              styles.difficultyBadge,
-              { backgroundColor: difficultyColor },
+              styles.outcomeBadge,
+              {
+                backgroundColor: `${outcome.color}22`,
+                borderColor: outcome.color,
+              },
             ]}
           >
-            {replay.difficulty.charAt(0).toUpperCase() +
-              replay.difficulty.slice(1)}
-          </Text>
-          <Text style={styles.byLine}>by @{replay.username}</Text>
-        </View>
-        {replay.outcome ? (
-          <Text style={styles.outcome}>Outcome: {replay.outcome}</Text>
-        ) : null}
-        {replay.total_score != null ? (
-          <Text style={styles.score}>
-            Score: {replay.total_score.toFixed(1)}
-          </Text>
-        ) : null}
+            <Text style={[styles.outcomeBadgeText, { color: outcome.color }]}>
+              {outcome.label}
+            </Text>
+          </View>
+        )}
       </View>
 
-      <Text style={styles.sectionTitle}>Conversation</Text>
-
-      {replay.messages.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyText}>No messages in this replay.</Text>
+      {/* Score */}
+      {replay.total_score != null && (
+        <View style={styles.scoreRow}>
+          <Text style={styles.scoreValue}>
+            {Math.round(replay.total_score)}
+          </Text>
+          <Text style={styles.scoreMax}>/100</Text>
         </View>
-      ) : (
-        <FlatList
-          data={replay.messages}
-          keyExtractor={(item, index) => `${item.turn_index}-${item.role}-${index}`}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => {
-            const isUser = item.role === "user";
-            return (
-              <View
-                style={[
-                  styles.messageBubble,
-                  isUser ? styles.userBubble : styles.aiBubble,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.roleLabel,
-                    isUser && styles.userRoleLabel,
-                  ]}
-                >
-                  {isUser ? "User" : "AI"} · Turn {item.turn_index}
-                </Text>
-                <Text
-                  style={[
-                    styles.messageText,
-                    isUser && styles.userMessageText,
-                  ]}
-                >
-                  {item.content}
-                </Text>
-              </View>
-            );
-          }}
-        />
       )}
+
+      {/* Divider */}
+      <View style={styles.divider} />
+
+      <Text style={styles.conversationLabel}>Conversation</Text>
+    </View>
+  );
+}
+
+function MessageBubble({ item }: { item: ReplayMessage }) {
+  const isUser = item.role === "user";
+
+  return (
+    <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAI]}>
+      <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
+        <Text style={[styles.roleLabel, isUser && styles.userRoleLabel]}>
+          {isUser ? "User" : "AI"} · Turn {item.turn_index}
+        </Text>
+        <Text style={[styles.messageText, isUser && styles.userMessageText]}>
+          {item.content}
+        </Text>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
+  topLeftGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "70%",
+    height: 280,
+  },
+  topRightGlow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "70%",
+    height: 280,
+  },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: colors.backgroundPrimary,
     padding: 24,
-    backgroundColor: "#fff",
   },
-  error: {
-    color: "#FF3B30",
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "rgba(255,255,255,0.4)",
+  },
+  errorText: {
+    color: colors.primaryRed,
     fontSize: 14,
     textAlign: "center",
     marginBottom: 16,
   },
-  backButton: {
-    backgroundColor: "#007AFF",
+  errorButton: {
+    backgroundColor: colors.primaryBlue,
     borderRadius: 12,
     paddingVertical: 12,
     paddingHorizontal: 24,
   },
-  backButtonText: {
-    color: "#fff",
-    fontSize: 16,
+  errorButtonText: {
+    color: colors.textPrimary,
+    fontSize: 15,
     fontWeight: "600",
   },
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 56,
+
+  // List
+  listContent: {
+    paddingHorizontal: 16,
+    gap: 10,
   },
-  backLink: {
-    paddingHorizontal: 24,
-    marginBottom: 8,
-  },
-  backLinkText: {
-    color: "#007AFF",
-    fontSize: 16,
-  },
+
+  // Header section
   header: {
-    paddingHorizontal: 24,
-    marginBottom: 20,
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+  },
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.3)",
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 8,
   },
   scenarioTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 8,
-  },
-  difficultyBadge: {
-    color: "#fff",
-    fontSize: 11,
-    fontWeight: "600",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    overflow: "hidden",
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    lineHeight: 28,
+    marginBottom: 6,
   },
   byLine: {
-    fontSize: 13,
-    color: "#666",
-  },
-  outcome: {
     fontSize: 14,
-    color: "#333",
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 14,
+  },
+  byLineName: {
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "600",
+  },
+  badgeRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 16,
+  },
+  diffBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  diffBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  outcomeBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  outcomeBadgeText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  scoreRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 2,
+    marginBottom: 20,
+  },
+  scoreValue: {
+    fontSize: 48,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    lineHeight: 52,
+  },
+  scoreMax: {
+    fontSize: 20,
+    fontWeight: "400",
+    color: "rgba(255,255,255,0.3)",
     marginBottom: 4,
   },
-  score: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#007AFF",
+  divider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    marginBottom: 16,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    paddingHorizontal: 24,
-    marginBottom: 12,
+  conversationLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.3)",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
-  emptyText: {
-    fontSize: 14,
-    color: "#999",
+
+  // Chat bubbles — same style as SessionChatScreen
+  bubbleRow: {
+    flexDirection: "row",
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 8,
+  bubbleRowUser: {
+    justifyContent: "flex-end",
   },
-  messageBubble: {
+  bubbleRowAI: {
+    justifyContent: "flex-start",
+  },
+  bubble: {
+    maxWidth: "80%",
+    borderRadius: 18,
     padding: 12,
-    borderRadius: 12,
-    maxWidth: "85%",
   },
   userBubble: {
-    backgroundColor: "#007AFF",
-    alignSelf: "flex-end",
+    backgroundColor: colors.primaryBlue,
+    borderBottomRightRadius: 4,
   },
   aiBubble: {
-    backgroundColor: "#F0F0F0",
-    alignSelf: "flex-start",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderBottomLeftRadius: 4,
   },
   roleLabel: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.4)",
     marginBottom: 4,
-    color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   userRoleLabel: {
-    color: "rgba(255,255,255,0.7)",
+    color: "rgba(255,255,255,0.6)",
   },
   messageText: {
-    fontSize: 14,
-    color: "#333",
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.85)",
   },
   userMessageText: {
     color: "#fff",
+  },
+
+  // Empty state
+  emptyWrap: {
+    paddingTop: 32,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.3)",
+  },
+
+  // CTA
+  ctaContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: "rgba(25,30,39,0.95)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+  },
+  backButton: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.primaryBlue,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
+  backButtonText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "700",
   },
 });

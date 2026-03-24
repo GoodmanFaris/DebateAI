@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { saveToken, removeToken } from "../utils/tokenStorage";
 
 export type User = {
   id: number;
@@ -22,9 +23,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
 
-  setAuth: (token, user) =>
-    set({ accessToken: token, user, isAuthenticated: true }),
+  setAuth: (token, user) => {
+    saveToken(token);
+    set({ accessToken: token, user, isAuthenticated: true });
+  },
 
-  clearAuth: () =>
-    set({ accessToken: null, user: null, isAuthenticated: false }),
+  clearAuth: () => {
+    removeToken();
+    set({ accessToken: null, user: null, isAuthenticated: false });
+  },
 }));

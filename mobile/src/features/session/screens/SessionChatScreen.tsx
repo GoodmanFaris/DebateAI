@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,15 +10,107 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Animated,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { sendMessage, finishSession } from "../../../api/sessions";
+import colors from "../../../constants/colors";
 
 type ChatMessage = {
   id: string;
   role: "user" | "ai" | "system";
   content: string;
 };
+
+// Animated typing dots shown while waiting for AI
+function TypingIndicator() {
+  const dots = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
+
+  useEffect(() => {
+    const animations = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 180),
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(dot, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.delay((dots.length - i) * 180),
+        ])
+      )
+    );
+    Animated.parallel(animations).start();
+  }, []);
+
+  return (
+    <View style={[styles.bubbleRow, styles.bubbleRowAI]}>
+      <View style={styles.aiBubble}>
+        <Text style={styles.roleLabel}>AI</Text>
+        <View style={styles.typingDots}>
+        {dots.map((dot, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              styles.typingDot,
+              {
+                opacity: dot,
+                transform: [
+                  {
+                    translateY: dot.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, -4],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          />
+        ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function MessageBubble({ item }: { item: ChatMessage }) {
+  const isUser = item.role === "user";
+  const isSystem = item.role === "system";
+
+  if (isSystem) {
+    return (
+      <View style={styles.systemBubble}>
+        <Text style={styles.systemLabel}>Context</Text>
+        <Text style={styles.systemText}>{item.content}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.bubbleRow, isUser ? styles.bubbleRowUser : styles.bubbleRowAI]}>
+      <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
+        <Text style={[styles.roleLabel, isUser && styles.userRoleLabel]}>
+          {isUser ? "You" : "AI"}
+        </Text>
+        <Text style={[styles.messageText, isUser && styles.userMessageText]}>
+          {item.content}
+        </Text>
+      </View>
+    </View>
+  );
+}
 
 export default function SessionChatScreen({
   sessionId,
@@ -32,6 +124,9 @@ export default function SessionChatScreen({
   maxTurns: number;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const listRef = useRef<FlatList>(null);
+
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     if (openingContext) {
       return [{ id: "opening", role: "system", content: openingContext }];
@@ -44,6 +139,10 @@ export default function SessionChatScreen({
   const [finished, setFinished] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
+  function scrollToBottom() {
+    setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+  }
+
   async function handleSend() {
     const text = input.trim();
     if (!text || sending || finished) return;
@@ -52,10 +151,8 @@ export default function SessionChatScreen({
     setInput("");
 
     const tempId = `user-${Date.now()}`;
-    setMessages((prev) => [
-      ...prev,
-      { id: tempId, role: "user", content: text },
-    ]);
+    setMessages((prev) => [...prev, { id: tempId, role: "user", content: text }]);
+    scrollToBottom();
 
     try {
       const res = await sendMessage(sessionId, text);
@@ -65,22 +162,13 @@ export default function SessionChatScreen({
         const withoutTemp = prev.filter((m) => m.id !== tempId);
         return [
           ...withoutTemp,
-          {
-            id: String(res.user_message.id),
-            role: "user",
-            content: res.user_message.content,
-          },
-          {
-            id: String(res.ai_message.id),
-            role: "ai",
-            content: res.ai_message.content,
-          },
+          { id: String(res.user_message.id), role: "user", content: res.user_message.content },
+          { id: String(res.ai_message.id), role: "ai", content: res.ai_message.content },
         ];
       });
 
-      if (res.is_last_turn) {
-        setFinished(true);
-      }
+      if (res.is_last_turn) setFinished(true);
+      scrollToBottom();
     } catch {
       setMessages((prev) => prev.filter((m) => m.id !== tempId));
       Alert.alert("Error", "Could not send message. Please try again.");
@@ -100,249 +188,393 @@ export default function SessionChatScreen({
     }
   }
 
-  function renderMessage({ item }: { item: ChatMessage }) {
-    const isUser = item.role === "user";
-    const isSystem = item.role === "system";
-
-    return (
-      <View
-        style={[
-          styles.messageBubble,
-          isSystem
-            ? styles.systemBubble
-            : isUser
-              ? styles.userBubble
-              : styles.aiBubble,
-        ]}
-      >
-        {isSystem ? (
-          <Text style={styles.systemLabel}>Context</Text>
-        ) : (
-          <Text style={[styles.roleLabel, isUser && styles.userRoleLabel]}>
-            {isUser ? "You" : "AI"}
-          </Text>
-        )}
-        <Text
-          style={[
-            styles.messageText,
-            isUser && styles.userText,
-            isSystem && styles.systemText,
-          ]}
-        >
-          {item.content}
-        </Text>
-      </View>
+  function confirmFinish() {
+    Alert.alert(
+      "Finish Session",
+      "Are you sure you want to finish? You'll get your results and feedback.",
+      [
+        { text: "Cancel", style: "cancel" },
+        { text: "Finish", style: "destructive", onPress: handleFinish },
+      ]
     );
   }
 
-  return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={90}
-    >
-      <View style={styles.header}>
-        <Text style={styles.title} numberOfLines={1}>
-          {title || `Session #${sessionId}`}
-        </Text>
-        <Text style={styles.turnInfo}>
-          Turn {turnCount}/{maxTurns}
-        </Text>
-      </View>
+  const turnsLeft = maxTurns - turnCount;
+  const turnsLow = turnsLeft <= 2 && !finished;
 
-      <FlatList
-        data={messages}
-        renderItem={renderMessage}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.messageList}
-        style={styles.list}
+  return (
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["rgba(74, 144, 217, 0.15)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 0.3 }}
+        style={styles.topLeftGlow}
+      />
+      <LinearGradient
+        colors={["rgba(231, 76, 60, 0.15)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.5, y: 0.3 }}
+        style={styles.topRightGlow}
       />
 
-      {finished ? (
-        <View style={styles.finishedBar}>
-          <Text style={styles.finishedText}>
-            All turns used. Finish the session to get your results.
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <View style={styles.headerAIBadge}>
+          <Ionicons name="hardware-chip-outline" size={14} color={colors.primaryBlue} />
+        </View>
+        <Text style={styles.headerTitle} numberOfLines={1}>
+          {title || `Session #${sessionId}`}
+        </Text>
+        <View style={[styles.turnBadge, turnsLow && styles.turnBadgeLow]}>
+          <Text style={[styles.turnText, turnsLow && styles.turnTextLow]}>
+            {turnCount}/{maxTurns}
           </Text>
         </View>
-      ) : null}
 
-      <View style={styles.inputBar}>
-        <TextInput
-          style={styles.textInput}
-          value={input}
-          onChangeText={setInput}
-          placeholder={finished ? "Session complete" : "Type your message..."}
-          editable={!sending && !finished}
-          multiline
-          maxLength={1000}
-        />
-        {!finished ? (
-          <Pressable
-            style={[styles.sendButton, (!input.trim() || sending) && styles.sendButtonDisabled]}
-            onPress={handleSend}
-            disabled={!input.trim() || sending}
-          >
-            {sending ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.sendButtonText}>Send</Text>
-            )}
-          </Pressable>
-        ) : null}
+        <Pressable
+          style={[styles.finishHeaderButton, finishing && styles.finishHeaderButtonDisabled]}
+          onPress={confirmFinish}
+          disabled={finishing || finished}
+        >
+          {finishing ? (
+            <ActivityIndicator size="small" color={colors.primaryRed} />
+          ) : (
+            <Text style={styles.finishHeaderText}>Finish</Text>
+          )}
+        </Pressable>
       </View>
 
-      <Pressable
-        style={[styles.finishButton, finishing && styles.finishButtonDisabled]}
-        onPress={handleFinish}
-        disabled={finishing}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={0}
       >
-        {finishing ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.finishButtonText}>Finish Session</Text>
+        {/* Messages */}
+        <FlatList
+          ref={listRef}
+          data={messages}
+          renderItem={({ item }) => <MessageBubble item={item} />}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.messageList}
+          style={styles.list}
+          onContentSizeChange={scrollToBottom}
+          ListFooterComponent={
+            sending ? (
+              <View style={styles.typingFooter}>
+                <TypingIndicator />
+              </View>
+            ) : null
+          }
+        />
+
+        {/* Finished banner */}
+        {finished && (
+          <View style={styles.finishedBanner}>
+            <Ionicons name="checkmark-circle-outline" size={14} color="#34C759" />
+            <Text style={styles.finishedText}>
+              All turns complete — finish to see your results
+            </Text>
+          </View>
         )}
-      </Pressable>
-    </KeyboardAvoidingView>
+
+        {/* Input bar */}
+        <View
+          style={[
+            styles.inputBar,
+            { paddingBottom: insets.bottom + 8 },
+          ]}
+        >
+          {!finished ? (
+            <>
+              <TextInput
+                style={styles.textInput}
+                value={input}
+                onChangeText={setInput}
+                placeholder="Your argument..."
+                placeholderTextColor="rgba(255,255,255,0.25)"
+                editable={!sending}
+                multiline
+                maxLength={1000}
+              />
+              <Pressable
+                style={[
+                  styles.sendButton,
+                  (!input.trim() || sending) && styles.sendButtonDisabled,
+                ]}
+                onPress={handleSend}
+                disabled={!input.trim() || sending}
+              >
+                <Ionicons name="arrow-up" size={18} color="#fff" />
+              </Pressable>
+            </>
+          ) : (
+            <Pressable
+              style={[styles.finishButton, finishing && styles.finishButtonDisabled]}
+              onPress={handleFinish}
+              disabled={finishing}
+            >
+              {finishing ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : (
+                <>
+                  <Ionicons name="flag-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.finishButtonText}>Finish Session</Text>
+                </>
+              )}
+            </Pressable>
+          )}
+        </View>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.backgroundPrimary,
   },
+  topLeftGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "70%",
+    height: 220,
+  },
+  topRightGlow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "70%",
+    height: 220,
+  },
+
+  // Header
   header: {
-    paddingTop: 56,
-    paddingHorizontal: 20,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E5",
-    flexDirection: "row",
-    justifyContent: "space-between",
+    borderBottomColor: "rgba(255,255,255,0.06)",
+    gap: 10,
+  },
+  headerAIBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: "rgba(74,144,217,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(74,144,217,0.3)",
+    justifyContent: "center",
     alignItems: "center",
   },
-  title: {
-    fontSize: 18,
-    fontWeight: "bold",
+  headerTitle: {
     flex: 1,
-    marginRight: 12,
+    fontSize: 15,
+    fontWeight: "600",
+    color: colors.textPrimary,
   },
-  turnInfo: {
-    fontSize: 14,
-    color: "#666",
+  turnBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
+  turnBadgeLow: {
+    backgroundColor: "rgba(231,76,60,0.12)",
+    borderColor: colors.primaryRed,
+  },
+  turnText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.4)",
+  },
+  turnTextLow: {
+    color: colors.primaryRed,
+  },
+  finishHeaderButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(231,76,60,0.4)",
+    backgroundColor: "rgba(231,76,60,0.1)",
+  },
+  finishHeaderButtonDisabled: {
+    opacity: 0.4,
+  },
+  finishHeaderText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: colors.primaryRed,
+  },
+
+  // Messages
   list: {
     flex: 1,
   },
   messageList: {
-    padding: 16,
-    gap: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    gap: 10,
   },
-  messageBubble: {
+  bubbleRow: {
+    flexDirection: "row",
+  },
+  bubbleRowUser: {
+    justifyContent: "flex-end",
+  },
+  bubbleRowAI: {
+    justifyContent: "flex-start",
+  },
+  bubble: {
+    maxWidth: "80%",
+    borderRadius: 18,
     padding: 12,
-    borderRadius: 12,
-    maxWidth: "85%",
   },
   userBubble: {
-    backgroundColor: "#007AFF",
-    alignSelf: "flex-end",
+    backgroundColor: colors.primaryBlue,
+    borderBottomRightRadius: 4,
   },
   aiBubble: {
-    backgroundColor: "#F0F0F0",
-    alignSelf: "flex-start",
-  },
-  systemBubble: {
-    backgroundColor: "#FFF8E1",
-    alignSelf: "center",
-    maxWidth: "95%",
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1,
-    borderColor: "#FFE082",
+    borderColor: "rgba(255,255,255,0.08)",
+    borderBottomLeftRadius: 4,
   },
   roleLabel: {
-    fontSize: 11,
-    fontWeight: "600",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.4)",
     marginBottom: 4,
-    color: "#999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   userRoleLabel: {
-    color: "rgba(255,255,255,0.7)",
-  },
-  userText: {
-    color: "#fff",
-  },
-  systemLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-    marginBottom: 4,
-    color: "#F57F17",
+    color: "rgba(255,255,255,0.6)",
   },
   messageText: {
     fontSize: 15,
-    lineHeight: 21,
-    color: "#333",
+    lineHeight: 22,
+    color: "rgba(255,255,255,0.85)",
+  },
+  userMessageText: {
+    color: "#fff",
+  },
+  systemBubble: {
+    backgroundColor: "rgba(255,200,50,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,200,50,0.2)",
+    borderRadius: 14,
+    padding: 12,
+    marginHorizontal: 8,
+  },
+  systemLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "rgba(255,200,50,0.7)",
+    marginBottom: 4,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   systemText: {
-    color: "#555",
+    fontSize: 13,
+    lineHeight: 19,
+    color: "rgba(255,255,255,0.55)",
     fontStyle: "italic",
   },
-  finishedBar: {
+
+  // Typing indicator
+  typingFooter: {
     paddingHorizontal: 16,
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  typingDots: {
+    flexDirection: "row",
+    gap: 5,
+    paddingVertical: 4,
+  },
+  typingDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: "rgba(255,255,255,0.4)",
+  },
+
+  // Finished banner
+  finishedBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 8,
-    backgroundColor: "#E8F5E9",
+    backgroundColor: "rgba(52,199,89,0.08)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(52,199,89,0.15)",
   },
   finishedText: {
     fontSize: 13,
-    color: "#2E7D32",
-    textAlign: "center",
+    color: "rgba(52,199,89,0.8)",
+    fontWeight: "500",
   },
+
+  // Input bar
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E5",
+    borderTopColor: "rgba(255,255,255,0.07)",
     gap: 8,
+    backgroundColor: colors.backgroundPrimary,
   },
   textInput: {
     flex: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
     borderWidth: 1,
-    borderColor: "#DDD",
-    borderRadius: 20,
+    borderColor: "rgba(255,255,255,0.1)",
+    borderRadius: 22,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingTop: 11,
+    paddingBottom: 11,
     fontSize: 15,
-    maxHeight: 100,
+    color: colors.textPrimary,
+    maxHeight: 110,
   },
   sendButton: {
-    backgroundColor: "#007AFF",
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  sendButtonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 15,
-  },
-  finishButton: {
-    marginHorizontal: 12,
-    marginBottom: 32,
-    marginTop: 4,
-    backgroundColor: "#FF3B30",
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: colors.primaryBlue,
+    justifyContent: "center",
     alignItems: "center",
   },
+  sendButtonDisabled: {
+    opacity: 0.35,
+  },
+
+  // Finish button (replaces input bar when finished)
+  finishButton: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: colors.primaryRed,
+    borderRadius: 14,
+    paddingVertical: 14,
+  },
   finishButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   finishButtonText: {
     color: "#fff",
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 16,
   },
 });

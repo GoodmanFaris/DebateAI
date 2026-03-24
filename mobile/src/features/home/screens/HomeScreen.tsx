@@ -1,11 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
+  Image,
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  Animated,
+  Dimensions,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "../../../store/auth.store";
 import {
@@ -13,55 +17,152 @@ import {
   ChallengeScenario,
   DailyChallengeResponse,
 } from "../../../api/challenges";
+import { getProfile } from "../../../api/profile";
+import colors from "../../../constants/colors";
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: "#34C759",
-  medium: "#FF9500",
-  hard: "#FF3B30",
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+
+const DIFFICULTY_CONFIG: Record<
+  string,
+  { color: string; glow: string; label: string }
+> = {
+  easy: { color: "#34C759", glow: "rgba(52, 199, 89, 0.18)", label: "Easy" },
+  medium: {
+    color: "#FF9500",
+    glow: "rgba(255, 149, 0, 0.18)",
+    label: "Medium",
+  },
+  hard: {
+    color: colors.primaryRed,
+    glow: "rgba(231, 76, 60, 0.18)",
+    label: "Hard",
+  },
 };
 
-function ChallengeCard({
+// Orb positions: easy top-left, medium top-right (offset lower), hard bottom-center
+const ORB_LAYOUT = [
+  { top: 0, left: 0 },
+  { top: 75, right: 0 },
+  { top: 260, alignSelf: "center" as const },
+];
+
+const ORB_SIZE = (SCREEN_WIDTH - 48 - 16) / 2;
+
+function ChallengeOrb({
   scenario,
+  position,
+  delay,
   onPress,
 }: {
   scenario: ChallengeScenario;
+  position: (typeof ORB_LAYOUT)[number];
+  delay: number;
   onPress: () => void;
 }) {
-  const color = DIFFICULTY_COLORS[scenario.difficulty] ?? "#999";
+  const cfg = DIFFICULTY_CONFIG[scenario.difficulty] ?? {
+    color: "#999",
+    glow: "rgba(153,153,153,0.15)",
+    label: scenario.difficulty,
+  };
+
+  const float = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(float, {
+            toValue: -8,
+            duration: 2200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(float, {
+            toValue: 0,
+            duration: 2200,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    }, delay);
+    return () => clearTimeout(timeout);
+  }, []);
 
   return (
-    <Pressable style={styles.card} onPress={onPress}>
-      <View style={styles.cardHeader}>
-        <Text style={[styles.difficultyBadge, { backgroundColor: color }]}>
-          {scenario.difficulty.charAt(0).toUpperCase() +
-            scenario.difficulty.slice(1)}
-        </Text>
-        {scenario.is_premium && (
-          <Text style={styles.premiumBadge}>Premium</Text>
-        )}
-      </View>
-      <Text style={styles.cardTitle}>{scenario.title}</Text>
-      <Text style={styles.cardDescription}>{scenario.short_description}</Text>
-    </Pressable>
+    <Animated.View
+      style={[
+        styles.orbWrapper,
+        { width: ORB_SIZE, height: ORB_SIZE + 48 },
+        position,
+        { transform: [{ translateY: float }] },
+      ]}
+    >
+      <Pressable style={styles.orbPressable} onPress={onPress}>
+        {/* Outer glow ring */}
+        <View
+          style={[
+            styles.orbGlow,
+            {
+              width: ORB_SIZE,
+              height: ORB_SIZE,
+              borderRadius: ORB_SIZE / 2,
+              backgroundColor: cfg.glow,
+              borderColor: cfg.color,
+            },
+          ]}
+        >
+          {/* Inner surface */}
+          <View
+            style={[
+              styles.orbInner,
+              {
+                width: ORB_SIZE - 20,
+                height: ORB_SIZE - 20,
+                borderRadius: (ORB_SIZE - 20) / 2,
+              },
+            ]}
+          >
+            <Text style={styles.orbTitle} numberOfLines={2}>
+              {scenario.title}
+            </Text>
+            <Text style={styles.orbDescription} numberOfLines={2}>
+              {scenario.short_description}
+            </Text>
+            {scenario.is_premium && (
+              <Text style={styles.orbPremium}>PRO</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Difficulty label below orb */}
+        <View style={[styles.orbLabel, { borderColor: cfg.color }]}>
+          <Text style={[styles.orbLabelText, { color: cfg.color }]}>
+            {cfg.label}
+          </Text>
+        </View>
+      </Pressable>
+    </Animated.View>
   );
 }
 
 export default function HomeScreen() {
   const router = useRouter();
-  const user = useAuthStore((s) => s.user);
-  const clearAuth = useAuthStore((s) => s.clearAuth);
   const [daily, setDaily] = useState<DailyChallengeResponse | null>(null);
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchChallenges() {
+    async function fetchData() {
       try {
-        const data = await getDailyChallenges();
+        const [challengeData, profileData] = await Promise.all([
+          getDailyChallenges(),
+          getProfile(),
+        ]);
         if (!cancelled) {
-          setDaily(data);
+          setDaily(challengeData);
+          setDisplayName(profileData.display_name);
           setError("");
         }
       } catch {
@@ -75,44 +176,80 @@ export default function HomeScreen() {
       }
     }
 
-    fetchChallenges();
+    fetchData();
     return () => {
       cancelled = true;
     };
   }, []);
 
+  const challenges: ChallengeScenario[] = daily
+    ? [daily.easy, daily.medium, daily.hard]
+    : [];
+
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={["rgba(74, 144, 217, 0.2)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topLeftGlow}
+      />
+      <LinearGradient
+        colors={["rgba(231, 76, 60, 0.2)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topRightGlow}
+      />
+
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>DebateAI</Text>
-        <Text style={styles.welcome}>
-          Welcome, {user?.email ?? "User"}!
-        </Text>
+        <Image
+          source={require("../../../../assets/images/logo.png")}
+          style={styles.logo}
+          resizeMode="contain"
+        />
+        <View style={styles.headerText}>
+          <Text style={styles.greeting}>
+            Hey, {displayName || "Debater"} 👋
+          </Text>
+          <Text style={styles.subGreeting}>Ready for today's challenges?</Text>
+        </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Daily Challenges</Text>
+      {/* Section title */}
+      <View style={styles.sectionRow}>
+        <Text style={styles.sectionTitle}>Daily Challenges</Text>
+        <View style={styles.livePill}>
+          <View style={styles.liveDot} />
+          <Text style={styles.liveText}>Today</Text>
+        </View>
+      </View>
 
-      {loading && <ActivityIndicator size="large" style={styles.loader} />}
+      {loading && (
+        <View style={styles.centered}>
+          <ActivityIndicator size="large" color={colors.primaryBlue} />
+        </View>
+      )}
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {daily && (
-        <View style={styles.cardList}>
-          {([daily.easy, daily.medium, daily.hard] as ChallengeScenario[]).map(
-            (scenario) => (
-              <ChallengeCard
-                key={scenario.id}
-                scenario={scenario}
-                onPress={() => router.push(`/scenario/${scenario.id}`)}
-              />
-            )
-          )}
+        <View style={styles.orbField}>
+          {challenges.map((scenario, i) => (
+            <ChallengeOrb
+              key={scenario.id}
+              scenario={scenario}
+              position={ORB_LAYOUT[i]}
+              delay={i * 700}
+              onPress={() =>
+                router.push(
+                  `/scenario/${scenario.id}?dailyChallengeId=${daily.id}`
+                )
+              }
+            />
+          ))}
         </View>
       )}
-
-      <Pressable style={styles.logoutButton} onPress={clearAuth}>
-        <Text style={styles.logoutText}>Log Out</Text>
-      </Pressable>
     </View>
   );
 }
@@ -120,92 +257,154 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
+    backgroundColor: colors.backgroundPrimary,
     paddingHorizontal: 24,
     paddingTop: 60,
+    paddingBottom: 100,
   },
+  topLeftGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "70%",
+    height: 280,
+  },
+  topRightGlow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "70%",
+    height: 280,
+  },
+
+  // Header
   header: {
-    marginBottom: 24,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 32,
+    gap: 12,
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
+  logo: {
+    width: 40,
+    height: 40,
   },
-  welcome: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 4,
+  headerText: {
+    flex: 1,
+  },
+  greeting: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colors.textPrimary,
+  },
+  subGreeting: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.4)",
+    marginTop: 2,
+  },
+
+  // Section row
+  sectionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 28,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: "600",
-    marginBottom: 16,
+    fontWeight: "700",
+    color: colors.textPrimary,
   },
-  loader: {
-    marginTop: 32,
+  livePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#34C759",
+  },
+  liveText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.45)",
+  },
+
+  centered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   error: {
-    color: "#FF3B30",
+    color: colors.primaryRed,
     textAlign: "center",
     marginTop: 16,
     fontSize: 14,
   },
-  cardList: {
-    gap: 12,
+
+  // Orb field
+  orbField: {
+    position: "relative",
+    width: "100%",
+    height: 480,
   },
-  card: {
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 12,
+  orbWrapper: {
+    position: "absolute",
+    alignItems: "center",
+  },
+  orbPressable: {
+    alignItems: "center",
+  },
+  orbGlow: {
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1.5,
+  },
+  orbInner: {
+    backgroundColor: "rgba(25, 30, 39, 0.85)",
+    justifyContent: "center",
+    alignItems: "center",
     padding: 16,
   },
-  cardHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    marginBottom: 8,
+  orbTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    textAlign: "center",
+    marginBottom: 6,
+    lineHeight: 18,
   },
-  difficultyBadge: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 4,
-    overflow: "hidden",
+  orbDescription: {
+    fontSize: 10,
+    color: "rgba(255,255,255,0.4)",
+    textAlign: "center",
+    lineHeight: 14,
   },
-  premiumBadge: {
+  orbPremium: {
+    fontSize: 9,
+    fontWeight: "700",
     color: "#AF52DE",
-    fontSize: 12,
-    fontWeight: "600",
+    marginTop: 6,
+    letterSpacing: 0.5,
+  },
+  orbLabel: {
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#AF52DE",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 4,
-    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.04)",
   },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: "#666",
-    lineHeight: 20,
-  },
-  logoutButton: {
-    borderWidth: 1,
-    borderColor: "#FF3B30",
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 24,
-  },
-  logoutText: {
-    color: "#FF3B30",
-    fontSize: 16,
-    fontWeight: "600",
+  orbLabelText: {
+    fontSize: 11,
+    fontWeight: "700",
+    letterSpacing: 0.5,
   },
 });

@@ -7,17 +7,27 @@ import {
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  getSessionResult,
-  SessionResultResponse,
-} from "../../../api/sessions";
+import { getSessionResult, SessionResultResponse } from "../../../api/sessions";
 import { useAuthStore } from "../../../store/auth.store";
+import colors from "../../../constants/colors";
 
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: "#34C759",
-  medium: "#FF9500",
-  hard: "#FF3B30",
+const DIFFICULTY_CONFIG: Record<string, { color: string; label: string }> = {
+  easy: { color: "#34C759", label: "Easy" },
+  medium: { color: "#FF9500", label: "Medium" },
+  hard: { color: colors.primaryRed, label: "Hard" },
+};
+
+const OUTCOME_CONFIG: Record<
+  string,
+  { color: string; label: string; icon: string }
+> = {
+  success: { color: "#34C759", label: "Success", icon: "checkmark-circle" },
+  partial: { color: "#FF9500", label: "Partial", icon: "remove-circle" },
+  fail: { color: colors.primaryRed, label: "Failed", icon: "close-circle" },
 };
 
 export default function SessionResultScreen({
@@ -26,6 +36,7 @@ export default function SessionResultScreen({
   sessionId: number;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const isPremium = useAuthStore((s) => s.user?.is_premium ?? false);
   const [result, setResult] = useState<SessionResultResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +72,7 @@ export default function SessionResultScreen({
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primaryBlue} />
         <Text style={styles.loadingText}>Loading results...</Text>
       </View>
     );
@@ -70,236 +81,368 @@ export default function SessionResultScreen({
   if (error || !result) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.error}>{error || "Results not found."}</Text>
+        <Text style={styles.errorText}>{error || "Results not found."}</Text>
         <Pressable
-          style={styles.backButton}
+          style={styles.errorButton}
           onPress={() => router.replace("/(tabs)")}
         >
-          <Text style={styles.backButtonText}>Go Home</Text>
+          <Text style={styles.errorButtonText}>Go Home</Text>
         </Pressable>
       </View>
     );
   }
 
-  const difficultyColor = DIFFICULTY_COLORS[result.difficulty] ?? "#999";
+  const diff = DIFFICULTY_CONFIG[result.difficulty] ?? {
+    color: "#999",
+    label: result.difficulty,
+  };
+  const outcome = result.outcome
+    ? (OUTCOME_CONFIG[result.outcome] ?? {
+        color: "#999",
+        label: result.outcome,
+        icon: "help-circle",
+      })
+    : null;
+
+  const scorePercent =
+    result.total_score != null ? Math.min(result.total_score, 100) / 100 : 0;
+  const barColor = outcome?.color ?? colors.primaryBlue;
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      <Text style={styles.heading}>Session Results</Text>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["rgba(74, 144, 217, 0.2)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topLeftGlow}
+      />
+      <LinearGradient
+        colors={["rgba(231, 76, 60, 0.2)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topRightGlow}
+      />
 
-      <Text style={styles.scenarioTitle}>{result.scenario_title}</Text>
-      <Text style={[styles.difficultyBadge, { backgroundColor: difficultyColor }]}>
-        {result.difficulty.charAt(0).toUpperCase() + result.difficulty.slice(1)}
-      </Text>
-
-      {result.outcome ? (
-        <View style={styles.outcomeCard}>
-          <Text style={styles.outcomeLabel}>Outcome</Text>
-          <Text style={styles.outcomeValue}>{result.outcome}</Text>
-        </View>
-      ) : null}
-
-      {result.total_score != null ? (
-        <View style={styles.scoreCard}>
-          <Text style={styles.scoreLabel}>Total Score</Text>
-          <Text style={styles.scoreValue}>
-            {result.total_score.toFixed(1)}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <Text style={styles.eyebrow}>Session Result</Text>
+        <Text style={styles.scenarioTitle}>{result.scenario_title}</Text>
+        <View
+          style={[
+            styles.difficultyBadge,
+            {
+              backgroundColor: `${diff.color}22`,
+              borderColor: diff.color,
+            },
+          ]}
+        >
+          <Text style={[styles.difficultyText, { color: diff.color }]}>
+            {diff.label}
           </Text>
         </View>
-      ) : null}
 
-      {result.summary ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Summary</Text>
-          <Text style={styles.sectionText}>{result.summary}</Text>
+        {/* Score card */}
+        <View style={styles.scoreSection}>
+          {outcome && (
+            <View style={styles.outcomeRow}>
+              <Ionicons
+                name={outcome.icon as any}
+                size={18}
+                color={outcome.color}
+              />
+              <Text style={[styles.outcomeLabel, { color: outcome.color }]}>
+                {outcome.label}
+              </Text>
+            </View>
+          )}
+
+          <Text style={styles.scoreValue}>
+            {result.total_score != null
+              ? `${Math.round(result.total_score)}`
+              : "—"}
+            <Text style={styles.scoreMax}>/100</Text>
+          </Text>
+
+          {/* Progress bar */}
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${scorePercent * 100}%`,
+                  backgroundColor: barColor,
+                },
+              ]}
+            />
+          </View>
         </View>
-      ) : null}
 
-      {result.pros ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Strengths</Text>
-          <Text style={styles.sectionText}>{result.pros}</Text>
-        </View>
-      ) : null}
+        {/* Summary */}
+        {result.summary ? (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Summary</Text>
+            <Text style={styles.sectionText}>{result.summary}</Text>
+          </View>
+        ) : null}
 
-      {result.cons ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Areas to Improve</Text>
-          <Text style={styles.sectionText}>{result.cons}</Text>
-        </View>
-      ) : null}
+        {/* Pros / Cons */}
+        {(result.pros || result.cons) ? (
+          <View style={styles.prosConsRow}>
+            {result.pros ? (
+              <View style={styles.prosConsCol}>
+                <Text style={[styles.sectionTitle, { color: "#34C759" }]}>Pros</Text>
+                <Text style={[styles.sectionText, { color: "#34C759" }]}>{result.pros}</Text>
+              </View>
+            ) : null}
+            {result.cons ? (
+              <View style={styles.prosConsCol}>
+                <Text style={[styles.sectionTitle, { color: colors.primaryRed }]}>Cons</Text>
+                <Text style={[styles.sectionText, { color: colors.primaryRed }]}>{result.cons}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
 
-      {result.improvement_tips ? (
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tips</Text>
-          <Text style={styles.sectionText}>{result.improvement_tips}</Text>
-        </View>
-      ) : null}
+        {/* Tips */}
+        {result.improvement_tips ? (
+          <View style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: "#FF9500" }]}>Tips</Text>
+            <Text style={styles.sectionText}>{result.improvement_tips}</Text>
+          </View>
+        ) : null}
 
-      <Pressable
-        style={[styles.coachButton, !isPremium && styles.coachButtonDisabled]}
-        onPress={() => {
-          if (isPremium) {
-            router.push(`/session/coach/${sessionId}`);
-          }
-        }}
-        disabled={!isPremium}
+        {/* Bottom spacer for fixed buttons */}
+        <View style={{ height: 220 }} />
+      </ScrollView>
+
+      {/* Fixed bottom actions */}
+      <View
+        style={[styles.ctaContainer, { paddingBottom: insets.bottom + 12 }]}
       >
-        <Text style={styles.coachButtonText}>
-          {isPremium ? "Coach Analysis" : "Coach Analysis (Premium)"}
-        </Text>
-      </Pressable>
+        <Pressable
+          style={[styles.coachButton, !isPremium && styles.coachButtonDisabled]}
+          onPress={() => {
+            if (isPremium) router.push(`/session/coach/${sessionId}`);
+          }}
+          disabled={!isPremium}
+        >
+          <Ionicons
+            name="analytics-outline"
+            size={16}
+            color="#fff"
+            style={{ marginRight: 8 }}
+          />
+          <Text style={styles.ctaButtonText}>
+            {isPremium ? "Coach Analysis" : "Coach Analysis (Premium)"}
+          </Text>
+        </Pressable>
 
-      <Pressable
-        style={styles.homeButton}
-        onPress={() => router.replace("/(tabs)")}
-      >
-        <Text style={styles.homeButtonText}>Back to Home</Text>
-      </Pressable>
-    </ScrollView>
+        <Pressable
+          style={styles.homeButton}
+          onPress={() => router.replace("/(tabs)")}
+        >
+          <Text style={styles.homeButtonText}>Back to Home</Text>
+        </Pressable>
+      </View>
+    </View>
   );
 }
 
+
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
+  topLeftGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "70%",
+    height: 280,
+  },
+  topRightGlow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "70%",
+    height: 280,
+  },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.backgroundPrimary,
     padding: 24,
   },
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: "#666",
+    color: "rgba(255,255,255,0.4)",
   },
-  error: {
-    color: "#FF3B30",
+  errorText: {
+    color: colors.primaryRed,
     fontSize: 14,
     textAlign: "center",
     marginBottom: 16,
   },
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
+  errorButton: {
+    backgroundColor: colors.primaryBlue,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
   },
-  content: {
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  heading: {
-    fontSize: 14,
+  errorButtonText: {
+    color: colors.textPrimary,
+    fontSize: 15,
     fontWeight: "600",
-    color: "#999",
+  },
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 60,
+  },
+
+  // Header
+  eyebrow: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.3)",
     textTransform: "uppercase",
     letterSpacing: 1,
     marginBottom: 8,
   },
   scenarioTitle: {
     fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 8,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginBottom: 10,
+    lineHeight: 28,
   },
   difficultyBadge: {
     alignSelf: "flex-start",
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "600",
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 24,
   },
-  outcomeCard: {
-    backgroundColor: "#F0F4FF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+  difficultyText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  // Score card
+  scoreSection: {
     alignItems: "center",
+    marginBottom: 28,
+  },
+  outcomeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 12,
   },
   outcomeLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 4,
-  },
-  outcomeValue: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#333",
-  },
-  scoreCard: {
-    backgroundColor: "#E8F5E9",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
-    alignItems: "center",
-  },
-  scoreLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
-    marginBottom: 4,
+    fontSize: 14,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   scoreValue: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#2E7D32",
+    fontSize: 80,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    lineHeight: 88,
+    marginBottom: 20,
   },
+  scoreMax: {
+    fontSize: 24,
+    fontWeight: "400",
+    color: "rgba(255,255,255,0.3)",
+  },
+  progressTrack: {
+    width: "100%",
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    borderRadius: 3,
+  },
+
+  // Pros / Cons columns
+  prosConsRow: {
+    flexDirection: "row",
+    gap: 20,
+    marginBottom: 24,
+  },
+  prosConsCol: {
+    flex: 1,
+  },
+
+  // Sections
   section: {
-    marginBottom: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 6,
+    fontSize: 13,
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+    color: "rgba(255,255,255,0.4)",
+    marginBottom: 8,
   },
   sectionText: {
-    fontSize: 14,
-    color: "#444",
-    lineHeight: 20,
+    fontSize: 15,
+    color: "rgba(255,255,255,0.75)",
+    lineHeight: 22,
+  },
+
+  // CTA
+  ctaContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    backgroundColor: "rgba(25,30,39,0.95)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+    gap: 8,
   },
   coachButton: {
-    backgroundColor: "#AF52DE",
-    borderRadius: 12,
-    paddingVertical: 16,
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
-    marginTop: 8,
+    backgroundColor: "#AF52DE",
+    borderRadius: 14,
+    paddingVertical: 14,
   },
   coachButtonDisabled: {
-    opacity: 0.4,
+    opacity: 0.35,
   },
-  coachButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
+  ctaButtonText: {
+    color: colors.textPrimary,
+    fontSize: 15,
+    fontWeight: "700",
   },
   homeButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 12,
-    paddingVertical: 16,
+    borderRadius: 14,
+    paddingVertical: 13,
     alignItems: "center",
-    marginTop: 8,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.1)",
   },
   homeButtonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "600",
-  },
-  backButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  backButtonText: {
-    color: "#fff",
-    fontSize: 16,
+    color: "rgba(255,255,255,0.6)",
+    fontSize: 15,
     fontWeight: "600",
   },
 });

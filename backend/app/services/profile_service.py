@@ -103,6 +103,7 @@ def get_history(user: User, session: Session) -> SessionHistoryResponse:
         .where(
             GameSession.user_id == user.id,
             GameSession.status == "completed",
+            GameSession.finished_at.is_not(None),
         )
         .order_by(GameSession.finished_at.desc())
     )

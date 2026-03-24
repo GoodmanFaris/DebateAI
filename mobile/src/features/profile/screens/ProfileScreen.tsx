@@ -1,20 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   View,
   Text,
+  Image,
   Pressable,
   StyleSheet,
   ActivityIndicator,
   ScrollView,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { useAuthStore } from "../../../store/auth.store";
 import { getProfile, ProfileData } from "../../../api/profile";
+import colors from "../../../constants/colors";
+
+const XP_PER_LEVEL = 100;
 
 export default function ProfileScreen() {
   const router = useRouter();
   const clearAuth = useAuthStore((s) => s.clearAuth);
+  const user = useAuthStore((s) => s.user);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,7 +46,7 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={colors.primaryBlue} />
       </View>
     );
   }
@@ -48,204 +54,284 @@ export default function ProfileScreen() {
   if (error || !profile) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.error}>{error || "Profile not found."}</Text>
+        <Text style={styles.errorText}>{error || "Profile not found."}</Text>
         <Pressable style={styles.logoutButton} onPress={clearAuth}>
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Text style={styles.buttonText}>Logout</Text>
         </Pressable>
       </View>
     );
   }
 
+  const xpProgress = (profile.xp % XP_PER_LEVEL) / XP_PER_LEVEL;
+
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-    >
-      <View style={styles.header}>
-        <Text style={styles.displayName}>{profile.display_name}</Text>
-        <Text style={styles.username}>@{profile.username}</Text>
-        {profile.is_premium ? (
-          <Text style={styles.premiumBadge}>Premium</Text>
-        ) : null}
-        {profile.region ? (
-          <Text style={styles.region}>{profile.region}</Text>
-        ) : null}
-      </View>
+    <View style={styles.container}>
+      <LinearGradient
+        colors={["rgba(74, 144, 217, 0.2)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topLeftGlow}
+      />
+      <LinearGradient
+        colors={["rgba(231, 76, 60, 0.2)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topRightGlow}
+      />
 
-      <Text style={styles.sectionTitle}>Stats</Text>
-      <View style={styles.statsRow}>
-        <StatBox label="Level" value={String(profile.level)} />
-        <StatBox label="XP" value={String(profile.xp)} />
-        <StatBox label="Streak" value={String(profile.current_streak)} />
-        <StatBox label="Best" value={String(profile.best_streak)} />
-      </View>
-
-      <Text style={styles.sectionTitle}>Performance</Text>
-      <View style={styles.card}>
-        <InfoRow label="Total Sessions" value={String(profile.total_sessions)} />
-        <InfoRow label="Total Wins" value={String(profile.total_wins)} />
-        <InfoRow
-          label="Average Score"
-          value={profile.average_score.toFixed(1)}
-        />
-      </View>
-
-      <Pressable
-        style={styles.editButton}
-        onPress={() => router.push("/profile/edit")}
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.editButtonText}>Edit Profile</Text>
-      </Pressable>
+        {/* Avatar + identity */}
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarWrapper}>
+            {profile.avatar_url ? (
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.avatarFallback}>
+                <Text style={styles.avatarInitial}>
+                  {profile.display_name.charAt(0).toUpperCase()}
+                </Text>
+              </View>
+            )}
+            {profile.is_premium && (
+              <View style={styles.premiumBadge}>
+                <Text style={styles.premiumBadgeText}>PRO</Text>
+              </View>
+            )}
+          </View>
 
-      <Pressable style={styles.logoutButton} onPress={clearAuth}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </Pressable>
-    </ScrollView>
+          <Text style={styles.displayName}>{profile.display_name}</Text>
+          <Text style={styles.email}>{user?.email}</Text>
+          {profile.region ? (
+            <Text style={styles.region}>{profile.region}</Text>
+          ) : null}
+        </View>
+
+        {/* XP progress */}
+        <View style={styles.xpSection}>
+          <View style={styles.xpLabelRow}>
+            <Text style={styles.xpLevel}>Level {profile.level}</Text>
+            <Text style={styles.xpCount}>{profile.xp} XP</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View
+              style={[styles.progressFill, { width: `${xpProgress * 100}%` }]}
+            />
+          </View>
+        </View>
+
+        {/* Stats grid */}
+        <View style={styles.statsGrid}>
+          <StatCard label="Level" value={String(profile.level)} />
+          <StatCard label="Daily Streak" value={`${profile.current_streak}d`} />
+          <StatCard label="Sessions" value={String(profile.total_sessions)} />
+          <StatCard
+            label="Avg Score"
+            value={profile.average_score.toFixed(1)}
+          />
+        </View>
+
+        {/* Buttons */}
+        <Pressable
+          style={styles.editButton}
+          onPress={() => router.push("/profile/edit")}
+        >
+          <Text style={styles.buttonText}>Edit Profile</Text>
+        </Pressable>
+
+        <Pressable style={styles.logoutButton} onPress={clearAuth}>
+          <Text style={styles.buttonText}>Logout</Text>
+        </Pressable>
+      </ScrollView>
+    </View>
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <View style={styles.statBox}>
+    <View style={styles.statCard}>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.infoRow}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.backgroundPrimary,
+  },
+  topLeftGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "70%",
+    height: 280,
+  },
+  topRightGlow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "70%",
+    height: 280,
+  },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#fff",
+    backgroundColor: colors.backgroundPrimary,
     padding: 24,
   },
-  error: {
-    color: "#FF3B30",
+  errorText: {
+    color: colors.primaryRed,
     fontSize: 14,
     textAlign: "center",
     marginBottom: 16,
   },
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
+  scroll: {
+    paddingHorizontal: 24,
+    paddingTop: 64,
+    paddingBottom: 100,
   },
-  content: {
-    padding: 24,
-    paddingTop: 60,
-    paddingBottom: 40,
-  },
-  header: {
+
+  // Avatar
+  avatarSection: {
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 32,
   },
-  displayName: {
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 4,
+  avatarWrapper: {
+    position: "relative",
+    marginBottom: 14,
   },
-  username: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 8,
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarFallback: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(74, 144, 217, 0.2)",
+    borderWidth: 2,
+    borderColor: "rgba(74, 144, 217, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarInitial: {
+    fontSize: 32,
+    fontWeight: "700",
+    color: colors.primaryBlue,
   },
   premiumBadge: {
-    color: "#AF52DE",
-    fontSize: 12,
-    fontWeight: "600",
-    borderWidth: 1,
-    borderColor: "#AF52DE",
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 4,
-    overflow: "hidden",
-    marginBottom: 6,
+    position: "absolute",
+    bottom: 0,
+    right: -4,
+    backgroundColor: "#AF52DE",
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  premiumBadgeText: {
+    fontSize: 9,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    letterSpacing: 0.5,
+  },
+  displayName: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  email: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.45)",
+    marginBottom: 4,
   },
   region: {
-    fontSize: 13,
-    color: "#999",
-    marginTop: 2,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.3)",
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 10,
-    color: "#333",
+
+  // XP
+  xpSection: {
+    marginBottom: 28,
   },
-  statsRow: {
+  xpLabelRow: {
     flexDirection: "row",
-    gap: 10,
-    marginBottom: 24,
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  statBox: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-    borderRadius: 10,
-    padding: 12,
+  xpLevel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: colors.textPrimary,
+  },
+  xpCount: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.45)",
+  },
+  progressTrack: {
+    height: 6,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderRadius: 3,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: colors.primaryBlue,
+    borderRadius: 3,
+  },
+
+  // Stats grid
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 32,
+  },
+  statCard: {
+    width: "47%",
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    borderRadius: 16,
+    padding: 18,
     alignItems: "center",
   },
   statValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#333",
+    fontSize: 26,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginBottom: 4,
   },
   statLabel: {
-    fontSize: 11,
-    color: "#999",
-    marginTop: 4,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.4)",
   },
-  card: {
-    borderWidth: 1,
-    borderColor: "#E5E5E5",
-    borderRadius: 12,
-    padding: 16,
-    gap: 14,
-    marginBottom: 32,
-  },
-  infoRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-  },
-  infoValue: {
-    fontSize: 14,
-    color: "#666",
-  },
+
+  // Buttons
   editButton: {
-    backgroundColor: "#007AFF",
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: colors.primaryBlue,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: "center",
-    marginBottom: 10,
-  },
-  editButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
+    marginBottom: 12,
   },
   logoutButton: {
-    backgroundColor: "#FF3B30",
-    borderRadius: 12,
-    paddingVertical: 14,
+    backgroundColor: colors.primaryRed,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: "center",
   },
-  logoutButtonText: {
-    color: "#fff",
+  buttonText: {
+    color: colors.textPrimary,
     fontSize: 16,
     fontWeight: "600",
   },

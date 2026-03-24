@@ -5,7 +5,7 @@ from app.models.scenario import Scenario
 from app.models.message import Message
 from app.ai.evaluation import build_conversation_text
 
-client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=10.0)
+client = OpenAI(api_key=settings.OPENAI_API_KEY, timeout=20.0)
 
 COACH_PROMPT = """You are a premium communication coach doing a deep post-session review.
 
@@ -88,7 +88,7 @@ def generate_coach_analysis(
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Here is the conversation to analyze:\n\n{conversation}"},
         ],
-        max_tokens=1000,
+        max_tokens=2000,
         temperature=0.4,
     )
 

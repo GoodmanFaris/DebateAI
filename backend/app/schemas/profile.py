@@ -31,7 +31,7 @@ class SessionHistoryEntry(SQLModel):
     session_id: int
     scenario_title: str
     difficulty: str
-    completed_at: datetime
+    completed_at: Optional[datetime]
     outcome: Optional[str]
     total_score: Optional[float]
     is_public_replay: bool

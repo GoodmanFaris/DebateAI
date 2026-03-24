@@ -7,12 +7,15 @@ import {
   ActivityIndicator,
   FlatList,
 } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
   getLeaderboard,
   LeaderboardEntry,
   LeaderboardType,
 } from "../../../api/leaderboard";
+import colors from "../../../constants/colors";
 
 const TABS: { key: LeaderboardType; label: string }[] = [
   { key: "daily", label: "Daily" },
@@ -20,6 +23,12 @@ const TABS: { key: LeaderboardType; label: string }[] = [
   { key: "global", label: "Global" },
   { key: "local", label: "Local" },
 ];
+
+const RANK_ACCENTS: Record<number, { color: string; bg: string }> = {
+  1: { color: "#FFD700", bg: "rgba(255, 215, 0, 0.08)" },
+  2: { color: "#C0C0C0", bg: "rgba(192, 192, 192, 0.08)" },
+  3: { color: "#CD7F32", bg: "rgba(205, 127, 50, 0.08)" },
+};
 
 export default function LeaderboardScreen() {
   const router = useRouter();
@@ -59,68 +68,86 @@ export default function LeaderboardScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.heading}>Leaderboard</Text>
-
-      <View style={styles.tabRow}>
-        {TABS.map((tab) => (
-          <Pressable
-            key={tab.key}
-            style={[
-              styles.tab,
-              activeTab === tab.key && styles.tabActive,
-            ]}
-            onPress={() => setActiveTab(tab.key)}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === tab.key && styles.tabTextActive,
-              ]}
-            >
-              {tab.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <LinearGradient
+        colors={["rgba(74, 144, 217, 0.2)", "transparent"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topLeftGlow}
+      />
+      <LinearGradient
+        colors={["rgba(231, 76, 60, 0.2)", "transparent"]}
+        start={{ x: 1, y: 0 }}
+        end={{ x: 0.5, y: 0.4 }}
+        style={styles.topRightGlow}
+      />
 
       {loading ? (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" />
+          <ActivityIndicator size="large" color={colors.primaryBlue} />
         </View>
       ) : error ? (
         <View style={styles.centered}>
-          <Text style={styles.error}>{error}</Text>
-        </View>
-      ) : entries.length === 0 ? (
-        <View style={styles.centered}>
-          <Text style={styles.emptyTitle}>No entries yet</Text>
-          <Text style={styles.emptySubtitle}>
-            Be the first to make it on the board!
-          </Text>
+          <Text style={styles.errorText}>{error}</Text>
         </View>
       ) : (
         <FlatList
           data={entries}
           keyExtractor={(item) => `${item.rank}-${item.username}`}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <View>
+              <View style={styles.header}>
+                <Text style={styles.heading}>Leaderboard</Text>
+                <Text style={styles.subheading}>Top performers today</Text>
+              </View>
+
+              <View style={styles.tabRow}>
+                {TABS.map((tab) => (
+                  <Pressable
+                    key={tab.key}
+                    style={[
+                      styles.tab,
+                      activeTab === tab.key && styles.tabActive,
+                    ]}
+                    onPress={() => setActiveTab(tab.key)}
+                  >
+                    <Text
+                      style={[
+                        styles.tabText,
+                        activeTab === tab.key && styles.tabTextActive,
+                      ]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {entries.length === 0 && (
+                <View style={styles.emptyBlock}>
+                  <Ionicons
+                    name="trophy-outline"
+                    size={44}
+                    color="rgba(255,255,255,0.15)"
+                    style={{ marginBottom: 14 }}
+                  />
+                  <Text style={styles.emptyTitle}>No leaderboard data yet</Text>
+                  <Text style={styles.emptySubtitle}>
+                    Play today's challenges to rank
+                  </Text>
+                </View>
+              )}
+            </View>
+          }
           renderItem={({ item }) => (
-            <Pressable
-              style={styles.row}
+            <LeaderboardRow
+              item={item}
               onPress={() =>
                 router.push(
                   `/leaderboard/${item.username}?displayName=${encodeURIComponent(item.display_name)}`
                 )
               }
-            >
-              <Text style={styles.rank}>#{item.rank}</Text>
-              <View style={styles.nameColumn}>
-                <Text style={styles.displayName} numberOfLines={1}>
-                  {item.display_name}
-                </Text>
-                <Text style={styles.username}>@{item.username}</Text>
-              </View>
-              <Text style={styles.score}>{item.score.toFixed(1)}</Text>
-            </Pressable>
+            />
           )}
         />
       )}
@@ -128,80 +155,190 @@ export default function LeaderboardScreen() {
   );
 }
 
+function LeaderboardRow({
+  item,
+  onPress,
+}: {
+  item: LeaderboardEntry;
+  onPress: () => void;
+}) {
+  const accent = RANK_ACCENTS[item.rank];
+  const isTopThree = item.rank <= 3;
+  const initial = item.display_name.charAt(0).toUpperCase();
+
+  return (
+    <Pressable
+      style={[styles.row, isTopThree && { backgroundColor: accent.bg }]}
+      onPress={onPress}
+    >
+      {/* Rank */}
+      <View style={styles.rankContainer}>
+        {isTopThree ? (
+          <Text style={[styles.rankTopThree, { color: accent.color }]}>
+            {item.rank}
+          </Text>
+        ) : (
+          <Text style={styles.rank}>{item.rank}</Text>
+        )}
+      </View>
+
+      {/* Avatar */}
+      <View
+        style={[
+          styles.avatar,
+          isTopThree && { borderColor: accent.color, borderWidth: 1.5 },
+        ]}
+      >
+        <Text style={[styles.avatarText, isTopThree && { color: accent.color }]}>
+          {initial}
+        </Text>
+      </View>
+
+      {/* Name + username */}
+      <View style={styles.nameColumn}>
+        <Text style={styles.displayName} numberOfLines={1}>
+          {item.display_name}
+        </Text>
+        <Text style={styles.username}>@{item.username}</Text>
+      </View>
+
+      {/* Score */}
+      <Text
+        style={[styles.score, isTopThree && { color: accent.color }]}
+      >
+        {item.score.toFixed(1)}
+      </Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
-    paddingTop: 60,
+    backgroundColor: colors.backgroundPrimary,
   },
-  heading: {
-    fontSize: 24,
-    fontWeight: "bold",
-    paddingHorizontal: 24,
-    marginBottom: 16,
+  topLeftGlow: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "70%",
+    height: 280,
   },
-  tabRow: {
-    flexDirection: "row",
-    paddingHorizontal: 24,
-    gap: 8,
-    marginBottom: 16,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: "#F0F0F0",
-    alignItems: "center",
-  },
-  tabActive: {
-    backgroundColor: "#007AFF",
-  },
-  tabText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#666",
-  },
-  tabTextActive: {
-    color: "#fff",
+  topRightGlow: {
+    position: "absolute",
+    top: 0,
+    right: 0,
+    width: "70%",
+    height: 280,
   },
   centered: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 24,
   },
-  error: {
-    color: "#FF3B30",
+  errorText: {
+    color: colors.primaryRed,
     fontSize: 14,
-    textAlign: "center",
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 8,
-    color: "#333",
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: "#999",
     textAlign: "center",
   },
   list: {
     paddingHorizontal: 24,
-    paddingBottom: 24,
+    paddingBottom: 100,
   },
+  header: {
+    paddingTop: 64,
+    marginBottom: 20,
+  },
+  heading: {
+    fontSize: 28,
+    fontWeight: "700",
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  subheading: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.35)",
+  },
+  tabRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 20,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  tabActive: {
+    backgroundColor: colors.primaryBlue,
+    borderColor: colors.primaryBlue,
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.4)",
+  },
+  tabTextActive: {
+    color: colors.textPrimary,
+  },
+  emptyBlock: {
+    alignItems: "center",
+    paddingTop: 48,
+  },
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+    color: colors.textPrimary,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: "rgba(255,255,255,0.35)",
+    textAlign: "center",
+  },
+
+  // Row
   row: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    borderRadius: 14,
     paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  rankContainer: {
+    width: 32,
+    alignItems: "center",
   },
   rank: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.35)",
+  },
+  rankTopThree: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    width: 44,
+    fontWeight: "700",
+  },
+  avatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  avatarText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "rgba(255,255,255,0.5)",
   },
   nameColumn: {
     flex: 1,
@@ -209,17 +346,17 @@ const styles = StyleSheet.create({
   displayName: {
     fontSize: 15,
     fontWeight: "600",
-    color: "#333",
+    color: colors.textPrimary,
   },
   username: {
     fontSize: 12,
-    color: "#999",
+    color: "rgba(255,255,255,0.35)",
     marginTop: 2,
   },
   score: {
     fontSize: 16,
-    fontWeight: "bold",
-    color: "#007AFF",
+    fontWeight: "700",
+    color: colors.primaryBlue,
     marginLeft: 12,
   },
 });
