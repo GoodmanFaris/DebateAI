@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getSessionHistory,
   updateSessionVisibility,
@@ -32,37 +33,20 @@ const OUTCOME_STYLES: Record<string, { color: string; label: string }> = {
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const [entries, setEntries] = useState<SessionHistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    data: entries = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["history"],
+    queryFn: getSessionHistory,
+    staleTime: 2 * 60 * 1000,
+  });
 
-    async function fetchHistory() {
-      try {
-        const data = await getSessionHistory();
-        if (!cancelled) {
-          setEntries(data);
-          setError("");
-        }
-      } catch {
-        if (!cancelled) {
-          setError("Could not load session history.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchHistory();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const error = queryError ? "Could not load session history." : "";
 
   async function handleToggleVisibility(entry: SessionHistoryEntry) {
     const newValue = !entry.is_public_replay;
@@ -70,8 +54,8 @@ export default function HistoryScreen() {
 
     try {
       await updateSessionVisibility(entry.session_id, newValue);
-      setEntries((prev) =>
-        prev.map((e) =>
+      queryClient.setQueryData<SessionHistoryEntry[]>(["history"], (old) =>
+        (old ?? []).map((e) =>
           e.session_id === entry.session_id
             ? { ...e, is_public_replay: newValue }
             : e

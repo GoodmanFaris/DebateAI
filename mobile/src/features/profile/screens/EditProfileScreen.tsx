@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { getProfile, updateProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
 import COUNTRIES from "../../../constants/countries";
@@ -22,6 +23,7 @@ import COUNTRIES from "../../../constants/countries";
 export default function EditProfileScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [region, setRegion] = useState("");
@@ -69,6 +71,7 @@ export default function EditProfileScreen() {
         username: username.trim(),
         region: region.trim() || undefined,
       });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       router.back();
     } catch (err: any) {
       const detail = err?.response?.data?.detail;

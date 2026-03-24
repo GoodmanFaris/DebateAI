@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import {
   getLeaderboard,
   LeaderboardEntry,
@@ -33,38 +34,18 @@ const RANK_ACCENTS: Record<number, { color: string; bg: string }> = {
 export default function LeaderboardScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LeaderboardType>("daily");
-  const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError("");
+  const {
+    data: entries = [],
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["leaderboard", activeTab],
+    queryFn: () => getLeaderboard(activeTab),
+    staleTime: 60 * 1000,
+  });
 
-    async function fetchLeaderboard() {
-      try {
-        const data = await getLeaderboard(activeTab);
-        if (!cancelled) {
-          setEntries(data);
-          setError("");
-        }
-      } catch {
-        if (!cancelled) {
-          setError("Could not load leaderboard.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchLeaderboard();
-    return () => {
-      cancelled = true;
-    };
-  }, [activeTab]);
+  const error = queryError ? "Could not load leaderboard." : "";
 
   return (
     <View style={styles.container}>

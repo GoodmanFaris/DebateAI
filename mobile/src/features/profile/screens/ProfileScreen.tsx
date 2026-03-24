@@ -1,4 +1,3 @@
-import { useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -10,9 +9,9 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useFocusEffect } from "@react-navigation/native";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../../store/auth.store";
-import { getProfile, ProfileData } from "../../../api/profile";
+import { getProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
 
 const XP_PER_LEVEL = 100;
@@ -21,27 +20,18 @@ export default function ProfileScreen() {
   const router = useRouter();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const user = useAuthStore((s) => s.user);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  const fetchProfile = useCallback(async () => {
-    try {
-      const data = await getProfile();
-      setProfile(data);
-      setError("");
-    } catch {
-      setError("Could not load profile.");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const {
+    data: profile,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useFocusEffect(
-    useCallback(() => {
-      fetchProfile();
-    }, [fetchProfile])
-  );
+  const error = queryError ? "Could not load profile." : "";
 
   if (loading) {
     return (

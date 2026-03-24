@@ -11,11 +11,11 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../../store/auth.store";
 import {
   getDailyChallenges,
   ChallengeScenario,
-  DailyChallengeResponse,
 } from "../../../api/challenges";
 import { getProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
@@ -146,37 +146,33 @@ function ChallengeOrb({
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [daily, setDaily] = useState<DailyChallengeResponse | null>(null);
   const [displayName, setDisplayName] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+
+  const {
+    data: daily,
+    isLoading: loading,
+    error: queryError,
+  } = useQuery({
+    queryKey: ["dailyChallenges"],
+    queryFn: getDailyChallenges,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const error = queryError ? "Could not load daily challenges." : "";
 
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchData() {
+    async function fetchProfile() {
       try {
-        const [challengeData, profileData] = await Promise.all([
-          getDailyChallenges(),
-          getProfile(),
-        ]);
-        if (!cancelled) {
-          setDaily(challengeData);
-          setDisplayName(profileData.display_name);
-          setError("");
-        }
+        const profileData = await getProfile();
+        if (!cancelled) setDisplayName(profileData.display_name);
       } catch {
-        if (!cancelled) {
-          setError("Could not load daily challenges.");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        // profile name is non-critical, fail silently
       }
     }
 
-    fetchData();
+    fetchProfile();
     return () => {
       cancelled = true;
     };

@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { useQueryClient } from "@tanstack/react-query";
 import { sendMessage, finishSession } from "../../../api/sessions";
 import colors from "../../../constants/colors";
 
@@ -125,6 +126,7 @@ export default function SessionChatScreen({
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const listRef = useRef<FlatList>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -181,6 +183,9 @@ export default function SessionChatScreen({
     setFinishing(true);
     try {
       const result = await finishSession(sessionId);
+      queryClient.invalidateQueries({ queryKey: ["dailyChallenges"] });
+      queryClient.invalidateQueries({ queryKey: ["history"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
       router.replace(`/session/result/${result.id}`);
     } catch {
       Alert.alert("Error", "Could not finish session. Please try again.");
