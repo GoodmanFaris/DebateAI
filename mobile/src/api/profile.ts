@@ -24,6 +24,7 @@ export type UpdateProfileRequest = {
   display_name?: string;
   username?: string;
   region?: string;
+  avatar_url?: string;
 };
 
 export async function updateProfile(

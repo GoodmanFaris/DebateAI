@@ -10,13 +10,16 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
 import { getProfile, updateProfile } from "../../../api/profile";
+import { uploadAvatar } from "../../../utils/uploadAvatar";
 import colors from "../../../constants/colors";
 import COUNTRIES from "../../../constants/countries";
 
@@ -27,6 +30,9 @@ export default function EditProfileScreen() {
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
   const [region, setRegion] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [avatarLocal, setAvatarLocal] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +49,7 @@ export default function EditProfileScreen() {
           setDisplayName(data.display_name);
           setUsername(data.username);
           setRegion(data.region ?? "");
+          setAvatarUrl(data.avatar_url);
         }
       } catch {
         if (!cancelled) {
@@ -60,6 +67,34 @@ export default function EditProfileScreen() {
       cancelled = true;
     };
   }, []);
+
+  async function handlePickAvatar() {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled) return;
+
+    const uri = result.assets[0].uri;
+    setAvatarLocal(uri);
+    setUploading(true);
+    setError("");
+
+    try {
+      const secureUrl = await uploadAvatar(uri);
+      setAvatarUrl(secureUrl);
+      await updateProfile({ avatar_url: secureUrl });
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
+    } catch {
+      setError("Could not upload avatar. Please try again.");
+      setAvatarLocal(null);
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -126,6 +161,38 @@ export default function EditProfileScreen() {
         <Text style={styles.heading}>Edit Profile</Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        {/* Avatar */}
+        <View style={styles.avatarSection}>
+          <Pressable onPress={handlePickAvatar} disabled={uploading || saving}>
+            <View style={styles.avatarWrapper}>
+              {(avatarLocal || avatarUrl) ? (
+                <Image
+                  source={{ uri: avatarLocal ?? avatarUrl! }}
+                  style={styles.avatar}
+                />
+              ) : (
+                <View style={styles.avatarFallback}>
+                  <Ionicons
+                    name="person"
+                    size={32}
+                    color="rgba(255,255,255,0.3)"
+                  />
+                </View>
+              )}
+              {uploading ? (
+                <View style={styles.avatarOverlay}>
+                  <ActivityIndicator color={colors.textPrimary} />
+                </View>
+              ) : (
+                <View style={styles.avatarBadge}>
+                  <Ionicons name="camera" size={12} color={colors.textPrimary} />
+                </View>
+              )}
+            </View>
+          </Pressable>
+          <Text style={styles.avatarHint}>Tap to change avatar</Text>
+        </View>
 
         {/* Display Name */}
         <Text style={styles.label}>Display Name</Text>
@@ -334,7 +401,58 @@ const styles = StyleSheet.create({
     fontSize: 26,
     fontWeight: "700",
     color: colors.textPrimary,
+    marginBottom: 24,
+  },
+
+  // Avatar
+  avatarSection: {
+    alignItems: "center",
     marginBottom: 28,
+  },
+  avatarWrapper: {
+    position: "relative",
+    width: 88,
+    height: 88,
+  },
+  avatar: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarFallback: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    borderWidth: 2,
+    borderColor: "rgba(255,255,255,0.12)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 44,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarBadge: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryBlue,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: colors.backgroundPrimary,
+  },
+  avatarHint: {
+    marginTop: 10,
+    fontSize: 12,
+    color: "rgba(255,255,255,0.3)",
   },
   errorText: {
     color: colors.primaryRed,
