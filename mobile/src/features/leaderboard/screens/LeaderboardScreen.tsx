@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -164,16 +165,26 @@ function LeaderboardRow({
       </View>
 
       {/* Avatar */}
-      <View
-        style={[
-          styles.avatar,
-          isTopThree && { borderColor: accent.color, borderWidth: 1.5 },
-        ]}
-      >
-        <Text style={[styles.avatarText, isTopThree && { color: accent.color }]}>
-          {initial}
-        </Text>
-      </View>
+      {item.avatar_url ? (
+        <Image
+          source={{ uri: item.avatar_url }}
+          style={[
+            styles.avatar,
+            isTopThree && { borderColor: accent.color, borderWidth: 1.5 },
+          ]}
+        />
+      ) : (
+        <View
+          style={[
+            styles.avatar,
+            isTopThree && { borderColor: accent.color, borderWidth: 1.5 },
+          ]}
+        >
+          <Text style={[styles.avatarText, isTopThree && { color: accent.color }]}>
+            {initial}
+          </Text>
+        </View>
+      )}
 
       {/* Name + username */}
       <View style={styles.nameColumn}>

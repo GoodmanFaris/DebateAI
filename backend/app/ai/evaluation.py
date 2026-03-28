@@ -29,11 +29,26 @@ You must respond with ONLY valid JSON in this exact format:
     "improvement_tips": "actionable advice (1-2 sentences)"
 }}
 
+CRITICAL RULE:
+The user MUST achieve the EXACT goal, not a partial or alternative outcome.
+
+If the final outcome differs from the goal (even if the user was persuasive),
+the result MUST be "fail".
+
+Examples:
+- If the goal is to convince someone to watch a thriller, and they agree to watch a comedy → FAIL
+- If the goal is to negotiate a higher salary, but the result is lower salary → FAIL
+- If the user convinces the AI of something incorrect or irrelevant to the goal → FAIL
+
 Scoring guide:
 - 0-30: Poor performance
 - 31-60: Average performance
 - 61-80: Good performance
 - 81-100: Excellent performance
+
+You MUST determine what final decision or agreement was reached in the conversation.
+Compare that result directly with the goal.
+If they do not match exactly, the outcome must be "fail" regardless of scores.
 
 Outcome guide:
 - "fail": user did not achieve the goal at all

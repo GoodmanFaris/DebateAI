@@ -1,0 +1,42 @@
+{
+  "cli": {
+    "version": ">= 18.4.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://debateai-dck8.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "681351154637-s1br6upu8hqnqjr9tnof86m7569ar50f.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "681351154637-t513j1p38prv2uf3jmuu6bcl00liam6c.apps.googleusercontent.com",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dmmkgsgyr",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "DebateAI"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://debateai-dck8.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "681351154637-s1br6upu8hqnqjr9tnof86m7569ar50f.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "681351154637-t513j1p38prv2uf3jmuu6bcl00liam6c.apps.googleusercontent.com",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dmmkgsgyr",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "DebateAI"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://debateai-dck8.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "681351154637-s1br6upu8hqnqjr9tnof86m7569ar50f.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "681351154637-t513j1p38prv2uf3jmuu6bcl00liam6c.apps.googleusercontent.com",
+        "EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME": "dmmkgsgyr",
+        "EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET": "DebateAI"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

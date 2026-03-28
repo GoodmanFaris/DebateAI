@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "mobile",
+    "name": "DebateAI",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -34,17 +34,25 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#191E27",
           "dark": {
-            "backgroundColor": "#000000"
+            "backgroundColor": "#191E27"
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-image-picker",
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "03b7449f-8e9b-452a-8064-3ecc5f4465aa"
+      }
     }
   }
 }
