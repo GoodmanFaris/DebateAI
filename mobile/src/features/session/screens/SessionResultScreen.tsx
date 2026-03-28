@@ -14,6 +14,8 @@ import { useRouter } from "expo-router";
 import { getSessionResult, SessionResultResponse } from "../../../api/sessions";
 import { useAuthStore } from "../../../store/auth.store";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 const DIFFICULTY_CONFIG: Record<string, { color: string; label: string }> = {
   easy: { color: "#34C759", label: "Easy" },
@@ -38,6 +40,10 @@ export default function SessionResultScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const isPremium = useAuthStore((s) => s.user?.is_premium ?? false);
+  const tutorialActive = useTutorialStore((s) => s.tutorialActive);
+  const tutorialStep = useTutorialStore((s) => s.tutorialStep);
+  const nextStep = useTutorialStore((s) => s.nextStep);
+  const goToStep = useTutorialStore((s) => s.goToStep);
   const [result, setResult] = useState<SessionResultResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -225,6 +231,7 @@ export default function SessionResultScreen({
         <Pressable
           style={[styles.coachButton, !isPremium && styles.coachButtonDisabled]}
           onPress={() => {
+            if (tutorialActive && tutorialStep === 5) nextStep();
             if (isPremium) router.push(`/session/coach/${sessionId}`);
           }}
           disabled={!isPremium}
@@ -242,11 +249,26 @@ export default function SessionResultScreen({
 
         <Pressable
           style={styles.homeButton}
-          onPress={() => router.replace("/(tabs)")}
+          onPress={() => {
+            if (tutorialActive) nextStep();
+            router.replace("/(tabs)");
+          }}
         >
           <Text style={styles.homeButtonText}>Back to Home</Text>
         </Pressable>
       </View>
+
+      <MascotTutorial
+        step={5}
+        onNext={() => {
+          if (isPremium) {
+            nextStep();
+          } else {
+            goToStep(7);
+            router.replace("/(tabs)/history");
+          }
+        }}
+      />
     </View>
   );
 }

@@ -1,6 +1,9 @@
+import { View, StyleSheet } from "react-native";
 import { Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTutorialStore } from "@/src/store/tutorial.store";
+import { TUTORIAL_TAB_HIGHLIGHT } from "@/src/constants/tutorialSteps";
 import colors from "@/src/constants/colors";
 
 const TAB_BAR_BG = "#131720";
@@ -11,15 +14,34 @@ type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 
 function tabIcon(
   active: IoniconName,
-  inactive: IoniconName
+  inactive: IoniconName,
+  tabName: string
 ): (props: { focused: boolean }) => React.ReactNode {
-  return ({ focused }) => (
-    <Ionicons
-      name={focused ? active : inactive}
-      size={22}
-      color={focused ? colors.primaryBlue : "rgba(255,255,255,0.35)"}
-    />
-  );
+  return ({ focused }) => {
+    const tutorialActive = useTutorialStore((s) => s.tutorialActive);
+    const tutorialStep = useTutorialStore((s) => s.tutorialStep);
+    const highlightedTab = tutorialActive
+      ? TUTORIAL_TAB_HIGHLIGHT[tutorialStep]
+      : undefined;
+    const isHighlighted = highlightedTab === tabName;
+
+    return (
+      <View style={isHighlighted ? styles.highlightWrap : undefined}>
+        <Ionicons
+          name={focused ? active : inactive}
+          size={22}
+          color={
+            isHighlighted
+              ? colors.primaryBlue
+              : focused
+                ? colors.primaryBlue
+                : "rgba(255,255,255,0.35)"
+          }
+        />
+        {isHighlighted && <View style={styles.highlightDot} />}
+      </View>
+    );
+  };
 }
 
 export default function TabLayout() {
@@ -63,30 +85,43 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: tabIcon("home", "home-outline"),
+          tabBarIcon: tabIcon("home", "home-outline", "index"),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: "History",
-          tabBarIcon: tabIcon("time", "time-outline"),
+          tabBarIcon: tabIcon("time", "time-outline", "history"),
         }}
       />
       <Tabs.Screen
         name="leaderboard"
         options={{
           title: "Leaderboard",
-          tabBarIcon: tabIcon("trophy", "trophy-outline"),
+          tabBarIcon: tabIcon("trophy", "trophy-outline", "leaderboard"),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: tabIcon("person", "person-outline"),
+          tabBarIcon: tabIcon("person", "person-outline", "profile"),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  highlightWrap: {
+    alignItems: "center",
+  },
+  highlightDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.primaryBlue,
+    marginTop: 3,
+  },
+});

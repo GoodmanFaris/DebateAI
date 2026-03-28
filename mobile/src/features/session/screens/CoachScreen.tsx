@@ -18,6 +18,8 @@ import {
   BetterResponse,
 } from "../../../api/sessions";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 export default function CoachScreen({
   sessionId,
@@ -26,6 +28,7 @@ export default function CoachScreen({
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const nextStep = useTutorialStore((s) => s.nextStep);
   const [coach, setCoach] = useState<CoachAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -202,6 +205,14 @@ export default function CoachScreen({
           <Text style={styles.backButtonText}>Back to Results</Text>
         </Pressable>
       </View>
+
+      <MascotTutorial
+        step={6}
+        onNext={() => {
+          nextStep();
+          router.replace("/(tabs)/history");
+        }}
+      />
     </View>
   );
 }

@@ -19,6 +19,8 @@ import {
 } from "../../../api/challenges";
 import { getProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -147,6 +149,9 @@ function ChallengeOrb({
 export default function HomeScreen() {
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
+  const tutorialStep = useTutorialStore((s) => s.tutorialStep);
+  const tutorialActive = useTutorialStore((s) => s.tutorialActive);
+  const nextStep = useTutorialStore((s) => s.nextStep);
 
   const {
     data: daily,
@@ -237,15 +242,21 @@ export default function HomeScreen() {
               scenario={scenario}
               position={ORB_LAYOUT[i]}
               delay={i * 700}
-              onPress={() =>
+              onPress={() => {
+                if (tutorialActive && tutorialStep === 1 && i === 0) {
+                  nextStep();
+                }
                 router.push(
                   `/scenario/${scenario.id}?dailyChallengeId=${daily.id}`
-                )
-              }
+                );
+              }}
             />
           ))}
         </View>
       )}
+
+      <MascotTutorial step={0} />
+      <MascotTutorial step={1} />
     </View>
   );
 }

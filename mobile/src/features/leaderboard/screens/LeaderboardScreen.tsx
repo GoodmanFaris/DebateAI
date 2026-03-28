@@ -18,6 +18,8 @@ import {
   LeaderboardType,
 } from "../../../api/leaderboard";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 const TABS: { key: LeaderboardType; label: string }[] = [
   { key: "daily", label: "Daily" },
@@ -35,6 +37,7 @@ const RANK_ACCENTS: Record<number, { color: string; bg: string }> = {
 export default function LeaderboardScreen() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<LeaderboardType>("daily");
+  const nextStep = useTutorialStore((s) => s.nextStep);
 
   const {
     data: entries = [],
@@ -133,6 +136,14 @@ export default function LeaderboardScreen() {
           )}
         />
       )}
+
+      <MascotTutorial
+        step={8}
+        onNext={() => {
+          nextStep();
+          router.push("/(tabs)/profile");
+        }}
+      />
     </View>
   );
 }

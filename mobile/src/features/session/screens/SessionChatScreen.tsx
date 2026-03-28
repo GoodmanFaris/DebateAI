@@ -19,6 +19,8 @@ import { useRouter } from "expo-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { sendMessage, finishSession } from "../../../api/sessions";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 type ChatMessage = {
   id: string;
@@ -127,6 +129,9 @@ export default function SessionChatScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const tutorialActive = useTutorialStore((s) => s.tutorialActive);
+  const tutorialStep = useTutorialStore((s) => s.tutorialStep);
+  const nextStep = useTutorialStore((s) => s.nextStep);
   const listRef = useRef<FlatList>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
@@ -169,6 +174,7 @@ export default function SessionChatScreen({
         ];
       });
 
+      if (tutorialActive && tutorialStep === 3) nextStep();
       if (res.is_last_turn) setFinished(true);
       scrollToBottom();
     } catch {
@@ -181,6 +187,7 @@ export default function SessionChatScreen({
 
   async function handleFinish() {
     setFinishing(true);
+    if (tutorialActive && tutorialStep === 4) nextStep();
     try {
       const result = await finishSession(sessionId);
       queryClient.invalidateQueries({ queryKey: ["dailyChallenges"] });
@@ -330,6 +337,9 @@ export default function SessionChatScreen({
           )}
         </View>
       </KeyboardAvoidingView>
+
+      <MascotTutorial step={3} />
+      <MascotTutorial step={4} />
     </View>
   );
 }

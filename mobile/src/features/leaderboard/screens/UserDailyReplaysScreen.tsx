@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -138,9 +139,13 @@ export default function UserDailyReplaysScreen({
 
         {/* User header */}
         <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
-          </View>
+          {data.avatar_url ? (
+            <Image source={{ uri: data.avatar_url }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarInitial}>{initial}</Text>
+            </View>
+          )}
           <Text style={styles.displayName}>{data.display_name}</Text>
           <Text style={styles.username}>@{data.username}</Text>
         </View>
@@ -349,6 +354,12 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     marginBottom: 32,
+  },
+  avatarImage: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    marginBottom: 12,
   },
   avatar: {
     width: 72,

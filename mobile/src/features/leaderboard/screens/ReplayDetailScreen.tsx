@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   FlatList,
+  Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -168,11 +169,22 @@ function Header({
       {/* Scenario title */}
       <Text style={styles.scenarioTitle}>{replay.scenario_title}</Text>
 
-      {/* By line — uses display_name from API */}
-      <Text style={styles.byLine}>
-        by{" "}
-        <Text style={styles.byLineName}>{replay.display_name}</Text>
-      </Text>
+      {/* By line with avatar */}
+      <View style={styles.byRow}>
+        {replay.avatar_url ? (
+          <Image source={{ uri: replay.avatar_url }} style={styles.byAvatar} />
+        ) : (
+          <View style={styles.byAvatarFallback}>
+            <Text style={styles.byAvatarInitial}>
+              {replay.display_name.charAt(0).toUpperCase()}
+            </Text>
+          </View>
+        )}
+        <Text style={styles.byLine}>
+          by{" "}
+          <Text style={styles.byLineName}>{replay.display_name}</Text>
+        </Text>
+      </View>
 
       {/* Badge row */}
       <View style={styles.badgeRow}>
@@ -314,10 +326,35 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     marginBottom: 6,
   },
+  byRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 14,
+  },
+  byAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  byAvatarFallback: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(74,144,217,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(74,144,217,0.35)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  byAvatarInitial: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.primaryBlue,
+  },
   byLine: {
     fontSize: 14,
     color: "rgba(255,255,255,0.45)",
-    marginBottom: 14,
   },
   byLineName: {
     color: "rgba(255,255,255,0.75)",

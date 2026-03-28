@@ -56,6 +56,7 @@ export type PublicReplay = {
   session_id: number;
   username: string;
   display_name: string;
+  avatar_url: string | null;
   scenario_title: string;
   difficulty: string;
   outcome: string | null;

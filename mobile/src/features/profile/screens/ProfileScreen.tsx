@@ -13,6 +13,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "../../../store/auth.store";
 import { getProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 const XP_PER_LEVEL = 100;
 
@@ -20,6 +22,7 @@ export default function ProfileScreen() {
   const router = useRouter();
   const clearAuth = useAuthStore((s) => s.clearAuth);
   const user = useAuthStore((s) => s.user);
+  const completeTutorial = useTutorialStore((s) => s.completeTutorial);
 
   const {
     data: profile,
@@ -138,6 +141,9 @@ export default function ProfileScreen() {
           <Text style={styles.buttonText}>Logout</Text>
         </Pressable>
       </ScrollView>
+
+      <MascotTutorial step={9} />
+      <MascotTutorial step={10} onNext={completeTutorial} />
     </View>
   );
 }

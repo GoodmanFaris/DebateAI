@@ -16,6 +16,8 @@ import { useRouter } from "expo-router";
 import { getScenario, ScenarioDetail } from "../../../api/scenarios";
 import { startSession } from "../../../api/sessions";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 const DIFFICULTY_CONFIG: Record<string, { color: string; label: string }> = {
   easy: { color: "#34C759", label: "Easy" },
@@ -32,6 +34,8 @@ export default function ScenarioIntroScreen({
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const tutorialActive = useTutorialStore((s) => s.tutorialActive);
+  const nextStep = useTutorialStore((s) => s.nextStep);
   const [scenario, setScenario] = useState<ScenarioDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -89,6 +93,7 @@ export default function ScenarioIntroScreen({
     if (!scenario) return;
     setStarting(true);
     try {
+      if (tutorialActive) nextStep();
       const session = await startSession(scenario.id, dailyChallengeId);
       router.push(
         `/session/${session.session_id}?title=${encodeURIComponent(scenario.title)}&openingContext=${encodeURIComponent(session.opening_context)}&maxTurns=${session.max_turns}`
@@ -212,6 +217,8 @@ export default function ScenarioIntroScreen({
           )}
         </Pressable>
       </View>
+
+      <MascotTutorial step={2} />
     </View>
   );
 }

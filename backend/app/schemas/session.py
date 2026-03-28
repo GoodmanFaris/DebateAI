@@ -145,6 +145,7 @@ class PublicReplayResponse(SQLModel):
     session_id: int
     username: str
     display_name: str
+    avatar_url: Optional[str]
     scenario_title: str
     difficulty: str
     outcome: Optional[str]

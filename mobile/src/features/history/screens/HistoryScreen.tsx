@@ -18,6 +18,8 @@ import {
   SessionHistoryEntry,
 } from "../../../api/history";
 import colors from "../../../constants/colors";
+import MascotTutorial from "../../../components/MascotTutorial";
+import { useTutorialStore } from "../../../store/tutorial.store";
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: "#34C759",
@@ -35,6 +37,7 @@ export default function HistoryScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const nextStep = useTutorialStore((s) => s.nextStep);
 
   const {
     data: entries = [],
@@ -146,6 +149,14 @@ export default function HistoryScreen() {
             onToggle={() => handleToggleVisibility(item)}
           />
         )}
+      />
+
+      <MascotTutorial
+        step={7}
+        onNext={() => {
+          nextStep();
+          router.push("/(tabs)/leaderboard");
+        }}
       />
     </View>
   );

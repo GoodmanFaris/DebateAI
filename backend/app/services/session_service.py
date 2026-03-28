@@ -535,6 +535,7 @@ def get_public_replay(
         session_id=game_session.id,
         username=profile.username if profile else "unknown",
         display_name=profile.display_name if profile else "Unknown",
+        avatar_url=profile.avatar_url if profile else None,
         scenario_title=scenario.title,
         difficulty=scenario.difficulty,
         outcome=game_session.outcome,
