@@ -51,8 +51,6 @@ export default function LeaderboardScreen() {
     staleTime: 60 * 1000,
   });
 
-  console.log("[Leaderboard] entries:", JSON.stringify(entries.slice(0, 3)));
-
   const error = queryError ? "Could not load leaderboard." : "";
 
   return (
@@ -200,7 +198,7 @@ function LeaderboardRow({
       {/* Name + username */}
       <View style={styles.nameColumn}>
         <Text style={styles.displayName} numberOfLines={1}>
-          {item.avatar_url ?? "NO URL"}
+          {item.display_name}
         </Text>
         <Text style={styles.username}>@{item.username}</Text>
       </View>
