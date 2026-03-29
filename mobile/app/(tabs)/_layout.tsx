@@ -15,14 +15,10 @@ type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
 function tabIcon(
   active: IoniconName,
   inactive: IoniconName,
-  tabName: string
+  tabName: string,
+  highlightedTab: string | undefined
 ): (props: { focused: boolean }) => React.ReactNode {
   return ({ focused }) => {
-    const tutorialActive = useTutorialStore((s) => s.tutorialActive);
-    const tutorialStep = useTutorialStore((s) => s.tutorialStep);
-    const highlightedTab = tutorialActive
-      ? TUTORIAL_TAB_HIGHLIGHT[tutorialStep]
-      : undefined;
     const isHighlighted = highlightedTab === tabName;
 
     return (
@@ -48,6 +44,9 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
   const tabBarHeight = TAB_BAR_CONTENT_HEIGHT + bottomInset;
+  const tutorialActive = useTutorialStore((s) => s.tutorialActive);
+  const tutorialStep = useTutorialStore((s) => s.tutorialStep);
+  const highlightedTab = tutorialActive ? TUTORIAL_TAB_HIGHLIGHT[tutorialStep] : undefined;
 
   return (
     <Tabs
@@ -85,28 +84,28 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
-          tabBarIcon: tabIcon("home", "home-outline", "index"),
+          tabBarIcon: tabIcon("home", "home-outline", "index", highlightedTab),
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
           title: "History",
-          tabBarIcon: tabIcon("time", "time-outline", "history"),
+          tabBarIcon: tabIcon("time", "time-outline", "history", highlightedTab),
         }}
       />
       <Tabs.Screen
         name="leaderboard"
         options={{
           title: "Leaderboard",
-          tabBarIcon: tabIcon("trophy", "trophy-outline", "leaderboard"),
+          tabBarIcon: tabIcon("trophy", "trophy-outline", "leaderboard", highlightedTab),
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: tabIcon("person", "person-outline", "profile"),
+          tabBarIcon: tabIcon("person", "person-outline", "profile", highlightedTab),
         }}
       />
     </Tabs>
