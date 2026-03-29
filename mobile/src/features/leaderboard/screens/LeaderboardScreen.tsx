@@ -9,7 +9,6 @@ import {
   Image,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -19,7 +18,10 @@ import {
 } from "../../../api/leaderboard";
 import colors from "../../../constants/colors";
 import MascotTutorial from "../../../components/MascotTutorial";
+import MascotBubble from "../../../components/MascotBubble";
 import { useTutorialStore } from "../../../store/tutorial.store";
+
+const redGuy = require("../../../../assets/images/redHuy.png");
 
 const TABS: { key: LeaderboardType; label: string }[] = [
   { key: "daily", label: "Daily" },
@@ -48,6 +50,8 @@ export default function LeaderboardScreen() {
     queryFn: () => getLeaderboard(activeTab),
     staleTime: 60 * 1000,
   });
+
+  console.log("[Leaderboard] entries:", JSON.stringify(entries.slice(0, 3)));
 
   const error = queryError ? "Could not load leaderboard." : "";
 
@@ -110,16 +114,12 @@ export default function LeaderboardScreen() {
 
               {entries.length === 0 && (
                 <View style={styles.emptyBlock}>
-                  <Ionicons
-                    name="trophy-outline"
-                    size={44}
-                    color="rgba(255,255,255,0.15)"
-                    style={{ marginBottom: 14 }}
+                  <MascotBubble
+                    mascot={redGuy}
+                    message="Be the first."
+                    size={72}
+                    animation="float"
                   />
-                  <Text style={styles.emptyTitle}>No leaderboard data yet</Text>
-                  <Text style={styles.emptySubtitle}>
-                    Play today's challenges to rank
-                  </Text>
                 </View>
               )}
             </View>
@@ -200,7 +200,7 @@ function LeaderboardRow({
       {/* Name + username */}
       <View style={styles.nameColumn}>
         <Text style={styles.displayName} numberOfLines={1}>
-          {item.display_name}
+          {item.avatar_url ?? "NO URL"}
         </Text>
         <Text style={styles.username}>@{item.username}</Text>
       </View>

@@ -1,11 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   View,
   Text,
   Image,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   Animated,
   Dimensions,
 } from "react-native";
@@ -20,7 +19,10 @@ import {
 import { getProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
 import MascotTutorial from "../../../components/MascotTutorial";
+import MascotBubble from "../../../components/MascotBubble";
 import { useTutorialStore } from "../../../store/tutorial.store";
+
+const blueGuy = require("../../../../assets/images/blueGuy.png");
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -148,7 +150,6 @@ function ChallengeOrb({
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [displayName, setDisplayName] = useState("");
   const tutorialStep = useTutorialStore((s) => s.tutorialStep);
   const tutorialActive = useTutorialStore((s) => s.tutorialActive);
   const nextStep = useTutorialStore((s) => s.nextStep);
@@ -163,25 +164,17 @@ export default function HomeScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const { data: profileData } = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const displayName = profileData?.display_name ?? "";
+  const showHelper =
+    !loading && !tutorialActive && profileData?.current_streak === 0;
+
   const error = queryError ? "Could not load daily challenges." : "";
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetchProfile() {
-      try {
-        const profileData = await getProfile();
-        if (!cancelled) setDisplayName(profileData.display_name);
-      } catch {
-        // profile name is non-critical, fail silently
-      }
-    }
-
-    fetchProfile();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   const challenges: ChallengeScenario[] = daily
     ? [daily.easy, daily.medium, daily.hard]
@@ -228,7 +221,12 @@ export default function HomeScreen() {
 
       {loading && (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primaryBlue} />
+          <MascotBubble
+            mascot={blueGuy}
+            message="Loading challenges..."
+            size={72}
+            animation="pulse"
+          />
         </View>
       )}
 
@@ -253,6 +251,18 @@ export default function HomeScreen() {
             />
           ))}
         </View>
+      )}
+
+      {showHelper && (
+        <MascotBubble
+          mascot={blueGuy}
+          message="Try today's challenge."
+          size={52}
+          animation="float"
+          layout="horizontal"
+          autoHide={4000}
+          style={styles.floatingHelper}
+        />
       )}
 
       <MascotTutorial step={0} />
@@ -348,6 +358,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  floatingHelper: {
+    position: "absolute",
+    bottom: 110,
+    right: 20,
   },
   error: {
     color: colors.primaryRed,

@@ -1,82 +1,140 @@
 import { ImageSourcePropType } from "react-native";
 
-export type TutorialStepConfig = {
+export type MascotConfig = {
+  mascot: ImageSourcePropType;
   message: string;
-  image: ImageSourcePropType;
+  align: "left" | "right";
+};
+
+export type TutorialStepConfig = {
   position: "center" | "top" | "bottom";
   showNext: boolean;
   nextLabel?: string;
+  primary: MascotConfig;
+  secondary?: MascotConfig;
 };
 
-const logo = require("../../assets/images/logo.png");
+const blueGuy    = require("../../assets/images/blueGuy.png");
+const redGuy     = require("../../assets/images/redHuy.png");
+const surprisedBlue = require("../../assets/images/SuprisedBlueGuy.png");
+const madRed     = require("../../assets/images/madRedGuy.png");
+const together   = require("../../assets/images/toghetherGuys.png");
 
 export const TUTORIAL_STEPS: Record<number, TutorialStepConfig> = {
   0: {
-    message: "Welcome to DebateAI! Let's walk you through your first debate.",
-    image: logo,
     position: "center",
     showNext: true,
+    primary: {
+      mascot: together,
+      message: "Welcome to DebateAI! Let's walk through your first debate.",
+      align: "left",
+    },
   },
   1: {
-    message: "Start with the Easy challenge — tap it!",
-    image: logo,
     position: "top",
     showNext: false,
+    primary: {
+      mascot: blueGuy,
+      message: "Start with the Easy challenge — tap it!",
+      align: "left",
+    },
   },
   2: {
-    message: "Read the scenario, then tap Start Session.",
-    image: logo,
     position: "top",
     showNext: false,
+    primary: {
+      mascot: blueGuy,
+      message: "Read the scenario, then tap Start.",
+      align: "right",
+    },
   },
   3: {
-    message: "Make your first argument!",
-    image: logo,
     position: "top",
     showNext: false,
+    primary: {
+      mascot: blueGuy,
+      message: "Make your first argument.",
+      align: "left",
+    },
+    secondary: {
+      mascot: redGuy,
+      message: "Let's see what you've got.",
+      align: "right",
+    },
   },
   4: {
-    message: "Ready to finish? Tap the Finish button.",
-    image: logo,
     position: "top",
     showNext: false,
+    primary: {
+      mascot: redGuy,
+      message: "Ready? Tap Finish when you're done.",
+      align: "right",
+    },
   },
   5: {
-    message: "Here's how you did! Check your score.",
-    image: logo,
     position: "top",
     showNext: true,
+    primary: {
+      mascot: surprisedBlue,
+      message: "See how you did!",
+      align: "left",
+    },
+    secondary: {
+      mascot: redGuy,
+      message: "Not bad. Can you do better?",
+      align: "right",
+    },
   },
   6: {
-    message: "Get AI coaching to improve your skills.",
-    image: logo,
     position: "top",
     showNext: true,
+    primary: {
+      mascot: blueGuy,
+      message: "This is where you improve.",
+      align: "left",
+    },
+    secondary: {
+      mascot: madRed,
+      message: "Unlock full feedback.",
+      align: "right",
+    },
   },
   7: {
-    message: "This is your session history.",
-    image: logo,
     position: "top",
     showNext: true,
+    primary: {
+      mascot: blueGuy,
+      message: "Your session history lives here.",
+      align: "left",
+    },
   },
   8: {
-    message: "See how you compare to others.",
-    image: logo,
     position: "top",
     showNext: true,
+    primary: {
+      mascot: redGuy,
+      message: "See how you rank against others.",
+      align: "right",
+    },
   },
   9: {
-    message: "Track your progress here.",
-    image: logo,
     position: "top",
     showNext: true,
+    primary: {
+      mascot: blueGuy,
+      message: "Track your progress here.",
+      align: "left",
+    },
   },
   10: {
-    message: "You're ready. Start improving daily!",
-    image: logo,
     position: "center",
     showNext: true,
     nextLabel: "Let's Go!",
+    primary: {
+      mascot: together,
+      message: "You're all set. Improve a little every day.",
+      align: "left",
+    },
   },
 };
 

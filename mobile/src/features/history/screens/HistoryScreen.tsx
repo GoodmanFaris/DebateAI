@@ -19,7 +19,10 @@ import {
 } from "../../../api/history";
 import colors from "../../../constants/colors";
 import MascotTutorial from "../../../components/MascotTutorial";
+import MascotBubble from "../../../components/MascotBubble";
 import { useTutorialStore } from "../../../store/tutorial.store";
+
+const blueGuy = require("../../../../assets/images/blueGuy.png");
 
 const DIFFICULTY_COLORS: Record<string, string> = {
   easy: "#34C759",
@@ -149,6 +152,18 @@ export default function HistoryScreen() {
             onToggle={() => handleToggleVisibility(item)}
           />
         )}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <MascotBubble
+                mascot={blueGuy}
+                message="No sessions yet."
+                size={72}
+                animation="float"
+              />
+            </View>
+          ) : null
+        }
       />
 
       <MascotTutorial
@@ -316,6 +331,10 @@ const styles = StyleSheet.create({
   subheading: {
     fontSize: 14,
     color: "rgba(255,255,255,0.35)",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    paddingTop: 80,
   },
   list: {
     paddingHorizontal: 24,

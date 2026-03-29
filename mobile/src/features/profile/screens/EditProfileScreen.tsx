@@ -88,6 +88,7 @@ export default function EditProfileScreen() {
       setAvatarUrl(secureUrl);
       await updateProfile({ avatar_url: secureUrl });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
+      queryClient.invalidateQueries({ queryKey: ["leaderboard"] });
     } catch {
       setError("Could not upload avatar. Please try again.");
       setAvatarLocal(null);

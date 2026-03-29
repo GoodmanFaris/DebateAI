@@ -1,11 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
   Pressable,
   StyleSheet,
-  ActivityIndicator,
   ScrollView,
+  Animated,
+  Easing,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
@@ -15,6 +16,11 @@ import { getSessionResult, SessionResultResponse } from "../../../api/sessions";
 import { useAuthStore } from "../../../store/auth.store";
 import colors from "../../../constants/colors";
 import MascotTutorial from "../../../components/MascotTutorial";
+import MascotBubble from "../../../components/MascotBubble";
+
+const blueGuy      = require("../../../../assets/images/blueGuy.png");
+const surprisedBlue = require("../../../../assets/images/SuprisedBlueGuy.png");
+const redGuy       = require("../../../../assets/images/redHuy.png");
 import { useTutorialStore } from "../../../store/tutorial.store";
 
 const DIFFICULTY_CONFIG: Record<string, { color: string; label: string }> = {
@@ -78,8 +84,12 @@ export default function SessionResultScreen({
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color={colors.primaryBlue} />
-        <Text style={styles.loadingText}>Loading results...</Text>
+        <MascotBubble
+          mascot={blueGuy}
+          message="Thinking..."
+          size={80}
+          animation="pulse"
+        />
       </View>
     );
   }
@@ -149,6 +159,9 @@ export default function SessionResultScreen({
             {diff.label}
           </Text>
         </View>
+
+        {/* Outcome reaction mascot */}
+        <OutcomeMascot outcome={result.outcome} />
 
         {/* Score card */}
         <View style={styles.scoreSection}>
@@ -273,6 +286,76 @@ export default function SessionResultScreen({
   );
 }
 
+
+const OUTCOME_MASCOT: Record<string, { mascot: any; message: string }> = {
+  success: { mascot: surprisedBlue, message: "Nice work!" },
+  partial: { mascot: blueGuy,       message: "Almost there." },
+  fail:    { mascot: redGuy,        message: "You can do better." },
+};
+
+function OutcomeMascot({ outcome }: { outcome: string | null }) {
+  const entryOpacity = useRef(new Animated.Value(0)).current;
+  const bounceScale  = useRef(new Animated.Value(1)).current;
+  const shakeX       = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(entryOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+
+    if (outcome === "success") {
+      Animated.sequence([
+        Animated.delay(350),
+        Animated.timing(bounceScale, { toValue: 1.1, duration: 120, useNativeDriver: true }),
+        Animated.timing(bounceScale, { toValue: 1,   duration: 120, useNativeDriver: true }),
+      ]).start();
+    } else if (outcome === "fail") {
+      Animated.sequence([
+        Animated.delay(350),
+        Animated.timing(shakeX, { toValue:  8, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeX, { toValue: -8, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeX, { toValue:  6, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeX, { toValue: -6, duration: 55, useNativeDriver: true }),
+        Animated.timing(shakeX, { toValue:  0, duration: 55, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [outcome]);
+
+  const cfg = outcome ? OUTCOME_MASCOT[outcome] : OUTCOME_MASCOT.partial;
+  if (!cfg) return null;
+
+  return (
+    <Animated.View
+      style={{
+        alignItems: "center",
+        marginBottom: 20,
+        opacity: entryOpacity,
+      }}
+    >
+      <Animated.Image
+        source={cfg.mascot}
+        style={{
+          width: 72,
+          height: 72,
+          transform: [{ scale: bounceScale }, { translateX: shakeX }],
+        }}
+        resizeMode="contain"
+      />
+      <Text
+        style={{
+          marginTop: 8,
+          fontSize: 14,
+          fontWeight: "600",
+          color: "rgba(255,255,255,0.5)",
+        }}
+      >
+        {cfg.message}
+      </Text>
+    </Animated.View>
+  );
+}
 
 const styles = StyleSheet.create({
   container: {
