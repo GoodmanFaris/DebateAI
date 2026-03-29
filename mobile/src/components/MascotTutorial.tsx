@@ -60,13 +60,13 @@ function MascotCard({
         Animated.timing(floatAnim, {
           toValue: -5,
           duration: 1600,
-          easing: Easing.inOut(Easing.sine),
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(floatAnim, {
           toValue: 0,
           duration: 1600,
-          easing: Easing.inOut(Easing.sine),
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ])
