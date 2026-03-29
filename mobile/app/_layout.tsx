@@ -39,29 +39,29 @@ export default function RootLayout() {
     bootstrap();
   }, []);
 
-  if (!isReady) {
-    return (
-      <>
-        <SplashScreen />
-        <StatusBar style="light" />
-      </>
-    );
-  }
-
   const inAuthGroup = segments[0] === "(auth)";
 
-  if (!isAuthenticated && !inAuthGroup) {
-    return <Redirect href="/(auth)/login" />;
-  }
-
-  if (isAuthenticated && inAuthGroup) {
-    return <Redirect href="/(tabs)" />;
+  if (!isReady) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SplashScreen />
+        <StatusBar style="light" />
+      </QueryClientProvider>
+    );
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Slot />
-      <StatusBar style="auto" />
+      {!isAuthenticated && !inAuthGroup ? (
+        <Redirect href="/(auth)/login" />
+      ) : isAuthenticated && inAuthGroup ? (
+        <Redirect href="/(tabs)" />
+      ) : (
+        <>
+          <Slot />
+          <StatusBar style="auto" />
+        </>
+      )}
     </QueryClientProvider>
   );
 }
