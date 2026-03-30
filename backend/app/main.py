@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from app.api.routes import auth, scenarios, sessions, profile, leaderboard
+from app.api.routes import auth, scenarios, sessions, profile, leaderboard, daily_challenge
 from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI(title="DebateAI")
 
