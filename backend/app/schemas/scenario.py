@@ -37,3 +37,35 @@ class DailyChallengeResponse(SQLModel):
     easy: ScenarioListItem
     medium: ScenarioListItem
     hard: ScenarioListItem
+
+from typing import List
+from sqlmodel import SQLModel
+
+
+class ScenarioAICreate(SQLModel):
+    slug: str
+    title: str
+    short_description: str
+    full_description: str
+    category: str
+    difficulty: str
+    goal: str
+    user_role: str
+    ai_role: str
+    ai_personality: str
+    opening_context: str
+    rules: str
+    max_turns: int
+    is_premium: bool
+    is_active: bool
+    system_prompt: str
+
+
+class ScenarioBulkCreateRequest(SQLModel):
+    scenarios: List[ScenarioAICreate]
+
+
+class ScenarioBulkCreateResponse(SQLModel):
+    message: str
+    inserted: int
+    skipped: int
