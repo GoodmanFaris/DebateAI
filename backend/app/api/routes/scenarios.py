@@ -6,6 +6,7 @@ from app.models.user import User
 from app.schemas.scenario import ScenarioDetailResponse, DailyChallengeResponse, ScenarioBulkCreateRequest, ScenarioBulkCreateResponse
 from fastapi import Header, HTTPException, status
 from app.services import scenario_service
+from app.core.config import settings
 
 router = APIRouter(tags=["scenarios"])
 
@@ -33,7 +34,7 @@ def create_scenarios_bulk(
     session: Session = Depends(get_session),
     x_api_key: str | None = Header(default=None),
 ):
-    if x_api_key != "TVOJ_SUPER_TAJNI_KLJUC":
+    if x_api_key != settings.X_API_KEY:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Unauthorized",
