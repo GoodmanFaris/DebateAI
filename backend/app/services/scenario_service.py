@@ -8,7 +8,7 @@ from app.schemas.scenario import ScenarioListItem, ScenarioDetailResponse, Daily
 from datetime import datetime, UTC
 from app.schemas.daily_challenge import DailyChallengeCreateResponse
 
-from backend.app.schemas.daily_challenge import DailyChallengeCreateResponse
+from app.schemas.daily_challenge import DailyChallengeCreateResponse
 
 def get_scenario(scenario_id: int, session: Session) -> ScenarioDetailResponse:
     scenario = session.exec(
