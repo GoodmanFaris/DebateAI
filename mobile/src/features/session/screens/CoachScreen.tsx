@@ -19,7 +19,9 @@ import {
 } from "../../../api/sessions";
 import colors from "../../../constants/colors";
 import MascotTutorial from "../../../components/MascotTutorial";
+import LockedOverlay from "../../../components/LockedOverlay";
 import { useTutorialStore } from "../../../store/tutorial.store";
+import { useAuthStore } from "../../../store/auth.store";
 
 export default function CoachScreen({
   sessionId,
@@ -29,11 +31,14 @@ export default function CoachScreen({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const nextStep = useTutorialStore((s) => s.nextStep);
+  const isPremium = useAuthStore((s) => s.user?.is_premium ?? false);
   const [coach, setCoach] = useState<CoachAnalysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (!isPremium) return;
+
     let cancelled = false;
 
     async function fetchCoach() {
@@ -58,7 +63,15 @@ export default function CoachScreen({
     return () => {
       cancelled = true;
     };
-  }, [sessionId]);
+  }, [sessionId, isPremium]);
+
+  if (!isPremium) {
+    return (
+      <View style={styles.container}>
+        <LockedOverlay onUpgrade={() => router.push("/premium")} />
+      </View>
+    );
+  }
 
   if (loading) {
     return (

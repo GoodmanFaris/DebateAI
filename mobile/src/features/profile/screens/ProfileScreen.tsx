@@ -14,6 +14,7 @@ import { useAuthStore } from "../../../store/auth.store";
 import { getProfile } from "../../../api/profile";
 import colors from "../../../constants/colors";
 import MascotTutorial from "../../../components/MascotTutorial";
+import PremiumBadge from "../../../components/PremiumBadge";
 import { useTutorialStore } from "../../../store/tutorial.store";
 
 const XP_PER_LEVEL = 100;
@@ -98,7 +99,10 @@ export default function ProfileScreen() {
             )}
           </View>
 
-          <Text style={styles.displayName}>{profile.display_name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.displayName}>{profile.display_name}</Text>
+            {profile.is_premium && <PremiumBadge />}
+          </View>
           <Text style={styles.email}>{user?.email}</Text>
           {profile.region ? (
             <Text style={styles.region}>{profile.region}</Text>
@@ -130,6 +134,15 @@ export default function ProfileScreen() {
         </View>
 
         {/* Buttons */}
+        {!profile.is_premium && (
+          <Pressable
+            style={styles.upgradeButton}
+            onPress={() => router.push("/premium")}
+          >
+            <Text style={styles.buttonText}>Upgrade to Premium</Text>
+          </Pressable>
+        )}
+
         <Pressable
           style={styles.editButton}
           onPress={() => router.push("/profile/edit")}
@@ -239,11 +252,16 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     letterSpacing: 0.5,
   },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 4,
+  },
   displayName: {
     fontSize: 22,
     fontWeight: "700",
     color: colors.textPrimary,
-    marginBottom: 4,
   },
   email: {
     fontSize: 13,
@@ -313,6 +331,13 @@ const styles = StyleSheet.create({
   },
 
   // Buttons
+  upgradeButton: {
+    backgroundColor: "#AF52DE",
+    borderRadius: 14,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginBottom: 12,
+  },
   editButton: {
     backgroundColor: colors.primaryBlue,
     borderRadius: 14,

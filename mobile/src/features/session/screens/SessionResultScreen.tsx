@@ -242,21 +242,24 @@ export default function SessionResultScreen({
         style={[styles.ctaContainer, { paddingBottom: insets.bottom + 12 }]}
       >
         <Pressable
-          style={[styles.coachButton, !isPremium && styles.coachButtonDisabled]}
+          style={[styles.coachButton, !isPremium && styles.coachButtonLocked]}
           onPress={() => {
+            if (!isPremium) {
+              router.push("/premium");
+              return;
+            }
             if (tutorialActive && tutorialStep === 5) nextStep();
-            if (isPremium) router.push(`/session/coach/${sessionId}`);
+            router.push(`/session/coach/${sessionId}`);
           }}
-          disabled={!isPremium}
         >
           <Ionicons
-            name="analytics-outline"
+            name={isPremium ? "analytics-outline" : "lock-closed-outline"}
             size={16}
             color="#fff"
             style={{ marginRight: 8 }}
           />
           <Text style={styles.ctaButtonText}>
-            {isPremium ? "Coach Analysis" : "Coach Analysis (Premium)"}
+            {isPremium ? "Coach Analysis" : "Unlock Full Analysis"}
           </Text>
         </Pressable>
 
@@ -529,8 +532,8 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingVertical: 14,
   },
-  coachButtonDisabled: {
-    opacity: 0.35,
+  coachButtonLocked: {
+    backgroundColor: "rgba(175,82,222,0.5)",
   },
   ctaButtonText: {
     color: colors.textPrimary,
