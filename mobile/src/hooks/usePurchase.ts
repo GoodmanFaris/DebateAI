@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Platform } from "react-native";
 import {
   initConnection,
   getSubscriptions,
@@ -12,7 +11,7 @@ import { useAuthStore } from "../store/auth.store";
 import { getMe } from "../api/auth";
 import { verifyPurchase } from "../api/billing";
 
-const PRODUCT_ID = "premium_monthly";
+const SUBSCRIPTION_ID = "premium_monthly";
 
 export function usePurchase() {
   const [loading, setLoading] = useState(false);
@@ -25,6 +24,8 @@ export function usePurchase() {
       if (!purchase.purchaseToken) return;
 
       try {
+        console.log("[usePurchase] purchase success:", purchase.productId);
+
         await verifyPurchase({
           product_id: purchase.productId,
           purchase_token: purchase.purchaseToken,
@@ -52,9 +53,12 @@ export function usePurchase() {
     setLoading(true);
 
     try {
+      console.log("[usePurchase] purchase start:", SUBSCRIPTION_ID);
+
       await initConnection();
 
-      const subscriptions = await getSubscriptions({ skus: [PRODUCT_ID] });
+      console.log("[usePurchase] fetching products:", SUBSCRIPTION_ID);
+      const subscriptions = await getSubscriptions({ skus: [SUBSCRIPTION_ID] });
 
       if (subscriptions.length === 0) {
         setError("Subscription not available.");
@@ -62,17 +66,7 @@ export function usePurchase() {
         return;
       }
 
-      const offerToken =
-        Platform.OS === "android"
-          ? (subscriptions[0] as any).subscriptionOfferDetails?.[0]?.offerToken ?? ""
-          : "";
-
-      await requestSubscription({
-        sku: PRODUCT_ID,
-        ...(Platform.OS === "android" && {
-          subscriptionOffers: [{ sku: PRODUCT_ID, offerToken }],
-        }),
-      });
+      await requestSubscription({ sku: SUBSCRIPTION_ID });
       // loading stays true until purchaseUpdatedListener resolves
     } catch (err: any) {
       if (err?.code !== "E_USER_CANCELLED") {
